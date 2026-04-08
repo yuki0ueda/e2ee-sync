@@ -70,6 +70,9 @@ func runJoin() {
 	if payload.BackendProvider == "" {
 		fatalf("Incomplete config: missing backend provider")
 	}
+	if payload.UseHub && payload.HubEndpoint == "" {
+		warnf("Hub mode enabled but no hub endpoint received, using default e2ee-sync-hub:8080")
+	}
 	ok("Configuration received from existing device")
 
 	// Run automated setup using received config

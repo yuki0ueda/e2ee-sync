@@ -185,6 +185,9 @@ func Collect(useHub bool, backend Backend) (*Credentials, error) {
 		if err != nil {
 			return nil, err
 		}
+		if endpoint == "" {
+			return nil, fmt.Errorf("S3 endpoint URL cannot be empty")
+		}
 		region, err = ReadLine("  Region (or 'auto'): ")
 		if err != nil {
 			return nil, err
