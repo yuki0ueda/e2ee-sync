@@ -77,17 +77,23 @@ func (s *Syncer) RunBisync() bool {
 		return true
 	}
 
-	// Prevent concurrent syncs
-	if !s.mu.TryLock() {
-		return true // already syncing
-	}
-	syncing := s.status.State == StateSyncing
-	s.mu.Unlock()
-	if syncing {
+	// Prevent concurrent syncs — check and set state atomically
+	s.mu.Lock()
+	if s.status.State == StateSyncing {
+		s.mu.Unlock()
 		return true
 	}
+	s.status.State = StateSyncing
+	s.status.Message = "Syncing..."
+	s.mu.Unlock()
+	s.sendStatus(Status{State: StateSyncing, Message: "Syncing..."})
 
-	s.updateStatus(StateSyncing, "Syncing...")
+	// Check sync directory exists
+	if _, err := os.Stat(s.cfg.SyncDir); os.IsNotExist(err) {
+		log.Printf("ERROR: sync directory does not exist: %s", s.cfg.SyncDir)
+		s.updateStatus(StateError, "Sync dir missing")
+		return false
+	}
 
 	// Quick reachability check for hub remotes before attempting bisync.
 	// Avoids a 10-minute bisync timeout when hub is down.

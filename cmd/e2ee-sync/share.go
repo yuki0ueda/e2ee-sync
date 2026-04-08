@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -151,7 +152,7 @@ func extractPayload(plat platform.Platform, rc *rclone.Client) (*TransferPayload
 
 	// Detect hub mode
 	configDir := plat.RcloneConfigDir()
-	confBytes, err := os.ReadFile(configDir + "/rclone.conf")
+	confBytes, err := os.ReadFile(filepath.Join(configDir, "rclone.conf"))
 	if err != nil {
 		return nil, fmt.Errorf("cannot read rclone.conf: %w", err)
 	}
