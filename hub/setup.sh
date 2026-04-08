@@ -167,6 +167,6 @@ echo "  Data:      /data/encrypted"
 echo "  R2 sync:   every 15 minutes"
 echo "  Catchup:   on boot (R2 -> local)"
 echo
-echo "Next: run e2ee-sync-setup on your devices."
+echo "Next: run e2ee-sync on your devices."
 echo "  See: https://github.com/yuki0ueda/e2ee-sync"
 echo

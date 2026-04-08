@@ -10,7 +10,7 @@ func TestLoadConfig_Valid(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	os.WriteFile(path, []byte(`sync_dir: /home/user/sync
-primary_remote: r2-crypt:
+primary_remote: cloud-crypt:
 fallback_remote: hub-crypt:
 rclone_path: /usr/bin/rclone
 filter_file: /home/user/.config/rclone/filter-rules.txt
@@ -25,8 +25,8 @@ poll_interval_sec: 120
 	if cfg.SyncDir != "/home/user/sync" {
 		t.Errorf("SyncDir = %q, want /home/user/sync", cfg.SyncDir)
 	}
-	if cfg.PrimaryRemote != "r2-crypt:" {
-		t.Errorf("PrimaryRemote = %q, want r2-crypt:", cfg.PrimaryRemote)
+	if cfg.PrimaryRemote != "cloud-crypt:" {
+		t.Errorf("PrimaryRemote = %q, want cloud-crypt:", cfg.PrimaryRemote)
 	}
 	if cfg.FallbackRemote != "hub-crypt:" {
 		t.Errorf("FallbackRemote = %q, want hub-crypt:", cfg.FallbackRemote)
@@ -46,7 +46,7 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	os.WriteFile(path, []byte(`sync_dir: /tmp/sync
-primary_remote: r2-crypt:
+primary_remote: cloud-crypt:
 `), 0644)
 
 	cfg, err := LoadConfig(path)
@@ -70,7 +70,7 @@ primary_remote: r2-crypt:
 func TestLoadConfig_MissingSyncDir(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
-	os.WriteFile(path, []byte(`primary_remote: r2-crypt:
+	os.WriteFile(path, []byte(`primary_remote: cloud-crypt:
 `), 0644)
 
 	_, err := LoadConfig(path)
@@ -104,7 +104,7 @@ func TestLoadConfig_Comments(t *testing.T) {
 	os.WriteFile(path, []byte(`# This is a comment
 sync_dir: /tmp/sync
 # Another comment
-primary_remote: r2-crypt:
+primary_remote: cloud-crypt:
 `), 0644)
 
 	cfg, err := LoadConfig(path)

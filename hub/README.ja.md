@@ -15,7 +15,7 @@
 
 ```
 [デバイス群 - Win/Mac/Linux]
-  ├── e2ee-sync-setup（初回セットアップ CLI）
+  ├── e2ee-sync（初回セットアップ CLI）
   ├── autosync（デーモン: ファイル監視 + bisync + フェイルオーバー）
   ├── rclone crypt（クライアント側で暗号化/復号）
   └── Tailscale
@@ -209,13 +209,13 @@ crontab -e
 
 ## 2. デバイス側のセットアップ（Client）
 
-`e2ee-sync-setup` CLI を使用してデバイスを設定:
+`e2ee-sync` CLI を使用してデバイスを設定:
 
 ```bash
 # GitHub Releases からダウンロード
 # https://github.com/yuki0ueda/e2ee-sync/releases
 
-e2ee-sync-setup setup
+e2ee-sync setup
 ```
 
 CLI が自動的に rclone.conf 生成、フィルタルール配置、初回 bisync、デーモン登録を実行します。
@@ -333,7 +333,7 @@ cat /var/log/rclone-catchup.log           # キャッチアップログ
 ### 新しいデバイスの追加
 
 1. rclone と Tailscale をインストール
-2. `e2ee-sync-setup setup` を実行 — **同じ暗号化パスワード・ソルト**を使用すること
+2. `e2ee-sync setup` を実行 — **同じ暗号化パスワード・ソルト**を使用すること
 3. 詳細は [メインREADME](../README.ja.md) を参照
 
 ### 暗号化パスワードの確認

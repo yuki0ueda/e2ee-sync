@@ -15,7 +15,7 @@ Setup guide for the Proxmox LXC hub — an **optional** component of [e2ee-sync]
 
 ```
 [Devices - Win/Mac/Linux]
-  ├── e2ee-sync-setup (initial configuration)
+  ├── e2ee-sync (initial configuration)
   ├── autosync (daemon: file watch + bisync + failover)
   ├── rclone crypt (client-side encrypt/decrypt)
   └── Tailscale
@@ -210,13 +210,13 @@ crontab -e
 
 ## 2. Device Setup (Client)
 
-Use the `e2ee-sync-setup` CLI to configure client devices:
+Use the `e2ee-sync` CLI to configure client devices:
 
 ```bash
 # Download from GitHub Releases
 # https://github.com/yuki0ueda/e2ee-sync/releases
 
-e2ee-sync-setup setup
+e2ee-sync setup
 ```
 
 The CLI automates: rclone.conf generation, filter rules, initial bisync, and daemon registration.
@@ -346,7 +346,7 @@ cat /var/log/rclone-catchup.log           # Catch-up logs
 ### Adding a New Device
 
 1. Install rclone and Tailscale on the device
-2. Run `e2ee-sync-setup setup` — use the **same encryption password and salt** as other devices
+2. Run `e2ee-sync setup` — use the **same encryption password and salt** as other devices
 3. See [main README](../README.md) for details
 
 ### Checking Encryption Passwords
