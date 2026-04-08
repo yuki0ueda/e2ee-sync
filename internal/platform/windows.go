@@ -117,7 +117,12 @@ func (p *windowsPlatform) UnregisterDaemon() error {
 		"echo Removing files...\r\n"+
 		"del /f \"%s\" >nul 2>&1\r\n"+
 		"del /f \"%s\" >nul 2>&1\r\n"+
-		"echo Done. You can delete this file and the .local\\bin folder.\r\n"+
+		"echo.\r\n"+
+		"echo === Cleanup complete ===\r\n"+
+		"echo.\r\n"+
+		"echo This file cannot delete itself. Please delete manually:\r\n"+
+		"echo   %~f0\r\n"+
+		"echo.\r\n"+
 		"pause\r\n",
 		binPath, p.registerBatPath())
 
