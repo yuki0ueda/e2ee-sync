@@ -59,6 +59,16 @@ func runJoin() {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		fatalf("Invalid config data: %v", err)
 	}
+	// Validate required fields
+	if payload.EncPassword == "" || payload.EncSalt == "" {
+		fatalf("Incomplete config: missing encryption keys")
+	}
+	if payload.S3AccessKeyID == "" || payload.S3SecretAccessKey == "" {
+		fatalf("Incomplete config: missing cloud storage credentials")
+	}
+	if payload.BackendProvider == "" {
+		fatalf("Incomplete config: missing backend provider")
+	}
 	ok("Configuration received from existing device")
 
 	// Run automated setup using received config

@@ -199,7 +199,7 @@ func (s *Syncer) runBisyncCmd(remote string, resync bool, force bool) error {
 		// Move deleted/overwritten files to a dated trash folder instead of permanent deletion
 		today := time.Now().Format("2006-01-02")
 		backupDir := filepath.Join(s.cfg.TrashDir, today)
-		os.MkdirAll(backupDir, 0755)
+		os.MkdirAll(backupDir, 0700)
 		args = append(args, "--backup-dir1", backupDir)
 	}
 	if resync {

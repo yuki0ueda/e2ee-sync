@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/yuki0ueda/e2ee-sync/internal/platform"
@@ -68,22 +70,35 @@ func runShare() {
 	addr := listener.Addr().String()
 	listener.Close()
 
-	// Start HTTP server
+	// Start single-use HTTP server
 	served := make(chan bool, 1)
+	var requestServed atomic.Bool
 	mux := http.NewServeMux()
 	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
-		if code != "" && r.URL.Query().Get("code") != code {
-			http.Error(w, "Invalid code", http.StatusUnauthorized)
+		// Only serve once
+		if requestServed.Load() {
+			http.Error(w, "Already served", http.StatusGone)
 			return
 		}
+		// Constant-time code comparison to prevent timing attacks
+		if code != "" {
+			provided := r.URL.Query().Get("code")
+			if len(provided) != len(code) || subtle.ConstantTimeCompare([]byte(provided), []byte(code)) != 1 {
+				http.Error(w, "Invalid code", http.StatusUnauthorized)
+				return
+			}
+		}
+		requestServed.Store(true)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(payload)
 		served <- true
 	})
 
 	server := &http.Server{
-		Addr:    addr,
-		Handler: mux,
+		Addr:         addr,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {
@@ -107,14 +122,14 @@ func runShare() {
 
 	select {
 	case <-served:
+		server.Close() // Immediately stop accepting new connections
 		fmt.Println()
 		ok("Configuration sent. Done.")
 	case <-time.After(5 * time.Minute):
+		server.Close()
 		fmt.Println()
 		warnf("Timed out. No device connected.")
 	}
-
-	server.Close()
 }
 
 func getTailscaleIP() (string, error) {
@@ -185,7 +200,7 @@ func extractPayload(plat platform.Platform, rc *rclone.Client) (*TransferPayload
 }
 
 func generateCode() string {
-	b := make([]byte, 4)
+	b := make([]byte, 16) // 128 bits of entropy
 	rand.Read(b)
 	return strings.ToUpper(hex.EncodeToString(b))
 }

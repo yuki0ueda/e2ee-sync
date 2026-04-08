@@ -70,12 +70,12 @@ func runSetup() {
 	confPath := filepath.Join(configDir, "rclone.conf")
 	backupRcloneConf(confPath)
 	if err := createRcloneRemotes(rc, creds, useHub); err != nil {
+		clearCreds(creds)
 		fatalf("Failed to create rclone remotes: %v", err)
 	}
-	creds.WebDAVPassword = ""
-	creds.EncryptionPassword = ""
-	creds.EncryptionSalt = ""
-	creds.S3SecretAccessKey = ""
+	clearCreds(creds)
+	// Ensure rclone.conf has restricted permissions (rclone may not set 0600)
+	os.Chmod(confPath, 0600)
 	ok("rclone.conf written to %s", confPath)
 
 	// Step 4: Filter rules
@@ -153,12 +153,10 @@ func runSetup() {
 			fatalf("Credential collection failed: %v", err)
 		}
 		if err := createRcloneRemotes(rc, creds, useHub); err != nil {
+			clearCreds(creds)
 			fatalf("Failed to update rclone remotes: %v", err)
 		}
-		creds.WebDAVPassword = ""
-		creds.EncryptionPassword = ""
-		creds.EncryptionSalt = ""
-		creds.S3SecretAccessKey = ""
+		clearCreds(creds)
 		ok("rclone.conf updated")
 	}
 
@@ -609,6 +607,13 @@ func deploySelf(plat platform.Platform) (string, error) {
 		return "", fmt.Errorf("write binary: %w", err)
 	}
 	return dstPath, nil
+}
+
+func clearCreds(creds *credential.Credentials) {
+	creds.WebDAVPassword = ""
+	creds.EncryptionPassword = ""
+	creds.EncryptionSalt = ""
+	creds.S3SecretAccessKey = ""
 }
 
 func binaryName() string {
