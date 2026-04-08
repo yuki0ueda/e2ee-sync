@@ -33,6 +33,7 @@ func runDaemon() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
+	cfg.LogPath = logPath
 
 	log.Printf("e2ee-sync daemon %s starting", version.String())
 	log.Printf("Log file: %s", logPath)

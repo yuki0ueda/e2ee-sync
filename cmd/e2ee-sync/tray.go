@@ -11,7 +11,9 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -99,6 +101,10 @@ func onReady(cfg *Config, syncer *Syncer) {
 	mSyncNow := systray.AddMenuItem("Sync Now", "Trigger immediate sync")
 	mPause := systray.AddMenuItem("Pause", "Pause/resume sync")
 	systray.AddSeparator()
+	mOpenSync := systray.AddMenuItem("Open Sync Folder", cfg.SyncDir)
+	mOpenConfig := systray.AddMenuItem("Open Config Folder", filepath.Dir(cfg.FilterFile))
+	mOpenLog := systray.AddMenuItem("View Log", "Open daemon log file")
+	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "Stop e2ee-sync")
 
 	quitCh := make(chan struct{})
@@ -123,6 +129,12 @@ func onReady(cfg *Config, syncer *Syncer) {
 				case syncNowCh <- struct{}{}:
 				default:
 				}
+			case <-mOpenSync.ClickedCh:
+				openPath(cfg.SyncDir)
+			case <-mOpenConfig.ClickedCh:
+				openPath(filepath.Dir(cfg.FilterFile))
+			case <-mOpenLog.ClickedCh:
+				openPath(cfg.LogPath)
 			case <-mPause.ClickedCh:
 				paused = !paused
 				syncer.SetPaused(paused)
@@ -208,4 +220,15 @@ func runSyncLoop(cfg *Config, syncer *Syncer, syncNowCh <-chan struct{}, quitCh 
 			return
 		}
 	}
+}
+
+// openPath opens a file or directory in the OS default application.
+func openPath(path string) {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("explorer", path)
+	} else {
+		cmd = exec.Command("xdg-open", path)
+	}
+	cmd.Start()
 }

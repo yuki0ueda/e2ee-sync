@@ -15,6 +15,7 @@ type Config struct {
 	FallbackRemote  string // empty if no hub
 	RclonePath      string
 	FilterFile      string
+	LogPath         string // set at runtime by daemon, not from config file
 	DebounceSec     int
 	PollIntervalSec int
 	TrashRetainDays int // auto-cleanup after this many days (default 30)
