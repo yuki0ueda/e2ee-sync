@@ -104,7 +104,6 @@ func (p *windowsPlatform) RegisterDaemon(binPath, configPath string) error {
 }
 
 // UnregisterDaemon generates unregister-daemon.bat that must be run as administrator.
-// It handles both current (E2EE-Sync) and legacy (E2EE-Autosync) task names.
 func (p *windowsPlatform) UnregisterDaemon() error {
 	binPath := filepath.Join(p.BinDir(), "e2ee-sync.exe")
 	batContent := fmt.Sprintf("@echo off\r\n"+
@@ -112,8 +111,6 @@ func (p *windowsPlatform) UnregisterDaemon() error {
 		"taskkill /IM e2ee-sync.exe /F >nul 2>&1\r\n"+
 		"schtasks /End /TN \"E2EE-Sync\" >nul 2>&1\r\n"+
 		"schtasks /Delete /TN \"E2EE-Sync\" /F >nul 2>&1\r\n"+
-		"schtasks /End /TN \"E2EE-Autosync\" >nul 2>&1\r\n"+
-		"schtasks /Delete /TN \"E2EE-Autosync\" /F >nul 2>&1\r\n"+
 		"echo Removing files...\r\n"+
 		"del /f \"%s\" >nul 2>&1\r\n"+
 		"del /f \"%s\" >nul 2>&1\r\n"+
@@ -121,7 +118,7 @@ func (p *windowsPlatform) UnregisterDaemon() error {
 		"echo === Cleanup complete ===\r\n"+
 		"echo.\r\n"+
 		"echo This file cannot delete itself. Please delete manually:\r\n"+
-		"echo   %~f0\r\n"+
+		"echo   %%~f0\r\n"+
 		"echo.\r\n"+
 		"pause\r\n",
 		binPath, p.registerBatPath())
@@ -138,19 +135,15 @@ func (p *windowsPlatform) RegisterDaemonHint(binPath, configPath string) string 
 }
 
 // DaemonStatus checks if the scheduled task is registered and running.
-// Checks both current (E2EE-Sync) and legacy (E2EE-Autosync) task names.
 func (p *windowsPlatform) DaemonStatus() (string, error) {
-	for _, tn := range []string{"E2EE-Sync", "E2EE-Autosync"} {
-		cmd := exec.Command("schtasks", "/Query", "/TN", tn, "/FO", "CSV", "/NH")
-		out, err := cmd.Output()
-		if err != nil {
-			continue
-		}
-		output := string(out)
-		if strings.Contains(output, "Running") {
-			return "running", nil
-		}
-		return "stopped", nil
+	cmd := exec.Command("schtasks", "/Query", "/TN", "E2EE-Sync", "/FO", "CSV", "/NH")
+	out, err := cmd.Output()
+	if err != nil {
+		return "not-installed", nil
 	}
-	return "not-installed", nil
+	output := string(out)
+	if strings.Contains(output, "Running") {
+		return "running", nil
+	}
+	return "stopped", nil
 }

@@ -439,12 +439,6 @@ func runUninstall() {
 		} else {
 			ok("Config removed: %s", configDir)
 		}
-		// Also try removing legacy config dir
-		legacyDir := filepath.Join(os.Getenv("USERPROFILE"), ".config", "autosync")
-		if _, err := os.Stat(legacyDir); err == nil {
-			os.RemoveAll(legacyDir)
-			ok("Legacy config removed: %s", legacyDir)
-		}
 	} else {
 		fmt.Println("Stopping daemon...")
 		if err := plat.UnregisterDaemon(); err != nil {
