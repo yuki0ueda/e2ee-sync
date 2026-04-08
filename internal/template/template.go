@@ -5,15 +5,15 @@ import (
 	"text/template"
 )
 
-// AutosyncConfigData holds configuration for the autosync config file.
-type AutosyncConfigData struct {
+// DaemonConfigData holds configuration for the daemon config file.
+type DaemonConfigData struct {
 	UseHub         bool
 	SyncDir        string
 	TrashDir       string
 	FilterFilePath string
 }
 
-const autosyncConfigTmpl = `sync_dir: {{.SyncDir}}
+const daemonConfigTmpl = `sync_dir: {{.SyncDir}}
 trash_dir: {{.TrashDir}}
 {{- if .UseHub}}
 primary_remote: hub-crypt:
@@ -29,9 +29,9 @@ trash_retain_days: 30
 hub_timeout_sec: 5
 `
 
-// RenderAutosyncConfig generates the autosync config.json content.
-func RenderAutosyncConfig(data AutosyncConfigData) (string, error) {
-	tmpl, err := template.New("config").Parse(autosyncConfigTmpl)
+// RenderDaemonConfig generates the daemon config.json content.
+func RenderDaemonConfig(data DaemonConfigData) (string, error) {
+	tmpl, err := template.New("config").Parse(daemonConfigTmpl)
 	if err != nil {
 		return "", err
 	}

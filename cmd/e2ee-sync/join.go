@@ -172,12 +172,12 @@ func runJoin() {
 	} else {
 		ok("e2ee-sync deployed to %s", binDst)
 	}
-	autosyncConfigDir := plat.AutosyncConfigDir()
-	if err := os.MkdirAll(autosyncConfigDir, 0755); err != nil {
+	daemonConfigDir := plat.ConfigDir()
+	if err := os.MkdirAll(daemonConfigDir, 0755); err != nil {
 		fatalf("Failed to create config dir: %v", err)
 	}
 	trashDir := filepath.Join(syncDir, ".trash")
-	configContent, err := tmpl.RenderAutosyncConfig(tmpl.AutosyncConfigData{
+	configContent, err := tmpl.RenderDaemonConfig(tmpl.DaemonConfigData{
 		UseHub:         payload.UseHub,
 		SyncDir:        syncDir,
 		TrashDir:       trashDir,
@@ -186,23 +186,23 @@ func runJoin() {
 	if err != nil {
 		fatalf("Failed to render config: %v", err)
 	}
-	autosyncConfigPath := filepath.Join(autosyncConfigDir, "config.json")
-	if err := os.WriteFile(autosyncConfigPath, []byte(configContent), 0600); err != nil {
+	daemonConfigPath := filepath.Join(daemonConfigDir, "config.json")
+	if err := os.WriteFile(daemonConfigPath, []byte(configContent), 0600); err != nil {
 		fatalf("Failed to write config.json: %v", err)
 	}
-	ok("config.json written to %s", autosyncConfigPath)
+	ok("config.json written to %s", daemonConfigPath)
 
 	// Step 7: Register daemon
 	step(7, 7, "Registering daemon")
 	if binDst != "" {
-		if err := plat.RegisterDaemon(binDst, autosyncConfigPath); err != nil {
+		if err := plat.RegisterDaemon(binDst, daemonConfigPath); err != nil {
 			warnf("Daemon registration failed: %v", err)
-			fmt.Fprintln(os.Stderr, plat.RegisterDaemonHint(binDst, autosyncConfigPath))
+			fmt.Fprintln(os.Stderr, plat.RegisterDaemonHint(binDst, daemonConfigPath))
 		} else {
 			if runtime.GOOS == "windows" {
 				ok("register-daemon.bat created")
 				fmt.Println("  To complete daemon setup, right-click register-daemon.bat → Run as administrator")
-				fmt.Printf("  Location: %s\n", filepath.Join(plat.AutosyncBinDir(), "register-daemon.bat"))
+				fmt.Printf("  Location: %s\n", filepath.Join(plat.BinDir(), "register-daemon.bat"))
 			} else {
 				ok("Daemon registered and started")
 			}

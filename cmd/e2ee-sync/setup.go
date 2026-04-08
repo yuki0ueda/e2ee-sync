@@ -189,12 +189,12 @@ func runSetup() {
 	} else {
 		ok("e2ee-sync deployed to %s", binDst)
 	}
-	autosyncConfigDir := plat.AutosyncConfigDir()
-	if err := os.MkdirAll(autosyncConfigDir, 0755); err != nil {
+	daemonConfigDir := plat.ConfigDir()
+	if err := os.MkdirAll(daemonConfigDir, 0755); err != nil {
 		fatalf("Failed to create config dir: %v", err)
 	}
 	trashDir := filepath.Join(syncDir, ".trash")
-	configContent, err := tmpl.RenderAutosyncConfig(tmpl.AutosyncConfigData{
+	configContent, err := tmpl.RenderDaemonConfig(tmpl.DaemonConfigData{
 		UseHub:         useHub,
 		SyncDir:        syncDir,
 		TrashDir:       trashDir,
@@ -203,18 +203,18 @@ func runSetup() {
 	if err != nil {
 		fatalf("Failed to render config: %v", err)
 	}
-	autosyncConfigPath := filepath.Join(autosyncConfigDir, "config.json")
-	if err := os.WriteFile(autosyncConfigPath, []byte(configContent), 0600); err != nil {
+	daemonConfigPath := filepath.Join(daemonConfigDir, "config.json")
+	if err := os.WriteFile(daemonConfigPath, []byte(configContent), 0600); err != nil {
 		fatalf("Failed to write config.json: %v", err)
 	}
-	ok("config.json written to %s", autosyncConfigPath)
+	ok("config.json written to %s", daemonConfigPath)
 
 	// Step 9: Register daemon
 	step(9, 9, "Registering daemon")
 	if binDst != "" {
-		if err := plat.RegisterDaemon(binDst, autosyncConfigPath); err != nil {
+		if err := plat.RegisterDaemon(binDst, daemonConfigPath); err != nil {
 			warnf("Daemon registration failed: %v", err)
-			fmt.Fprintln(os.Stderr, plat.RegisterDaemonHint(binDst, autosyncConfigPath))
+			fmt.Fprintln(os.Stderr, plat.RegisterDaemonHint(binDst, daemonConfigPath))
 		} else {
 			if runtime.GOOS == "windows" {
 				ok("register-daemon.bat created")
@@ -222,7 +222,7 @@ func runSetup() {
 				fmt.Println("  *** ACTION REQUIRED ***")
 				fmt.Println("  Sync will NOT start until you register the daemon:")
 				fmt.Println("  1. Open this folder in Explorer:")
-				fmt.Printf("     %s\n", plat.AutosyncBinDir())
+				fmt.Printf("     %s\n", plat.BinDir())
 				fmt.Println("  2. Right-click register-daemon.bat → Run as administrator")
 			} else {
 				ok("Daemon registered and started")
@@ -233,7 +233,7 @@ func runSetup() {
 	}
 
 	// Summary
-	logPath := filepath.Join(autosyncConfigDir, "autosync.log")
+	logPath := filepath.Join(daemonConfigDir, "e2ee-sync.log")
 	fmt.Println()
 	fmt.Println("=== Setup Complete ===")
 	fmt.Println()
@@ -241,7 +241,7 @@ func runSetup() {
 	fmt.Printf("  Deleted files:   %s\n", trashDir)
 	fmt.Printf("  Filter rules:    %s (edit to customize exclusions)\n", filterPath)
 	fmt.Printf("  Daemon log:      %s\n", logPath)
-	fmt.Printf("  Config:          %s\n", autosyncConfigPath)
+	fmt.Printf("  Config:          %s\n", daemonConfigPath)
 	fmt.Println()
 	fmt.Printf("Files in %s will be synced across all your devices.\n", syncDir)
 	fmt.Println("Deleted files are kept in .trash/ for 30 days.")
@@ -252,7 +252,7 @@ func runSetup() {
 func runUpgrade() {
 	plat := platform.Detect()
 
-	binPath := filepath.Join(plat.AutosyncBinDir(), binaryName())
+	binPath := filepath.Join(plat.BinDir(), binaryName())
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
 		fatalf("e2ee-sync not found at %s. Run 'e2ee-sync setup' first.", binPath)
 	}
@@ -289,7 +289,7 @@ func runUpgrade() {
 
 	// Restart daemon
 	fmt.Println("Restarting daemon...")
-	configPath := filepath.Join(plat.AutosyncConfigDir(), "config.json")
+	configPath := filepath.Join(plat.ConfigDir(), "config.json")
 	if err := plat.RegisterDaemon(binPath, configPath); err != nil {
 		warnf("Daemon restart failed: %v", err)
 	}
@@ -333,7 +333,7 @@ func runVerify() {
 	files := []string{
 		filepath.Join(configDir, "rclone.conf"),
 		filepath.Join(configDir, "filter-rules.txt"),
-		filepath.Join(plat.AutosyncConfigDir(), "config.json"),
+		filepath.Join(plat.ConfigDir(), "config.json"),
 	}
 	for _, f := range files {
 		if _, err := os.Stat(f); err != nil {
@@ -381,7 +381,7 @@ func runVerify() {
 		warnf("  daemon: %s", status)
 		if runtime.GOOS == "windows" {
 			fmt.Fprintln(os.Stderr, "    Hint: Run register-daemon.bat as administrator")
-			fmt.Fprintf(os.Stderr, "    Location: %s\n", filepath.Join(plat.AutosyncBinDir(), "register-daemon.bat"))
+			fmt.Fprintf(os.Stderr, "    Location: %s\n", filepath.Join(plat.BinDir(), "register-daemon.bat"))
 		} else {
 			fmt.Fprintln(os.Stderr, "    Hint: Run 'e2ee-sync setup' to register the daemon")
 		}
@@ -426,14 +426,14 @@ func runUninstall() {
 		ok("Daemon removed")
 	}
 
-	binPath := filepath.Join(plat.AutosyncBinDir(), binaryName())
+	binPath := filepath.Join(plat.BinDir(), binaryName())
 	if err := os.Remove(binPath); err != nil && !os.IsNotExist(err) {
 		warnf("Remove binary: %v", err)
 	} else {
 		ok("Binary removed: %s", binPath)
 	}
 
-	configDir := plat.AutosyncConfigDir()
+	configDir := plat.ConfigDir()
 	if err := os.RemoveAll(configDir); err != nil {
 		warnf("Remove config dir: %v", err)
 	} else {
@@ -592,7 +592,7 @@ func retryResync(rc *rclone.Client, syncDir, remote string) error {
 
 // deploySelf copies the current executable to the platform's bin directory.
 func deploySelf(plat platform.Platform) (string, error) {
-	binDir := plat.AutosyncBinDir()
+	binDir := plat.BinDir()
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		return "", fmt.Errorf("create bin dir: %w", err)
 	}

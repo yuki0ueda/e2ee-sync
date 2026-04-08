@@ -16,7 +16,7 @@
 ```
 [デバイス群 - Win/Mac/Linux]
   ├── e2ee-sync（初回セットアップ CLI）
-  ├── autosync（デーモン: ファイル監視 + bisync + フェイルオーバー）
+  ├── e2ee-sync daemon（デーモン: ファイル監視 + bisync + フェイルオーバー）
   ├── rclone crypt（クライアント側で暗号化/復号）
   └── Tailscale
          │
@@ -294,7 +294,7 @@ WARNING: Modtime compare was requested but at least one remote does not support 
 
 **原因**: WebDAV は modtime の比較をサポートしていない。
 
-**対処**: `--checksum` を付けて実行する。autosync はデフォルトでこのオプションを使用する。
+**対処**: `--checksum` を付けて実行する。e2ee-sync daemon はデフォルトでこのオプションを使用する。
 
 ```bash
 rclone bisync ~/sync/ hub-crypt: --checksum --verbose

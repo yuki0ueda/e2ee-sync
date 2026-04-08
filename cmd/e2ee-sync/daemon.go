@@ -22,7 +22,7 @@ func runDaemon() {
 	detachConsole()
 
 	// Set up file logging next to config.json
-	logPath := filepath.Join(filepath.Dir(*configPath), "autosync.log")
+	logPath := filepath.Join(filepath.Dir(*configPath), "e2ee-sync.log")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err == nil {
 		log.SetOutput(logFile)

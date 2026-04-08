@@ -16,7 +16,7 @@ Setup guide for the Proxmox LXC hub — an **optional** component of [e2ee-sync]
 ```
 [Devices - Win/Mac/Linux]
   ├── e2ee-sync (initial configuration)
-  ├── autosync (daemon: file watch + bisync + failover)
+  ├── e2ee-sync daemon (daemon: file watch + bisync + failover)
   ├── rclone crypt (client-side encrypt/decrypt)
   └── Tailscale
          │
@@ -302,7 +302,7 @@ WARNING: Modtime compare was requested but at least one remote does not support 
 
 **Cause**: WebDAV does not support modtime comparison.
 
-**Fix**: Always use `--checksum`. The autosync daemon uses this by default.
+**Fix**: Always use `--checksum`. The e2ee-sync daemon uses this by default.
 
 ```bash
 rclone bisync ~/sync/ hub-crypt: --checksum --verbose

@@ -30,12 +30,12 @@ func (p *windowsPlatform) SyncDir() string {
 	return filepath.Join(p.home, "sync")
 }
 
-func (p *windowsPlatform) AutosyncBinDir() string {
+func (p *windowsPlatform) BinDir() string {
 	return filepath.Join(p.home, ".local", "bin")
 }
 
-func (p *windowsPlatform) AutosyncConfigDir() string {
-	return filepath.Join(p.home, ".config", "autosync")
+func (p *windowsPlatform) ConfigDir() string {
+	return filepath.Join(p.home, ".config", "e2ee-sync")
 }
 
 func (p *windowsPlatform) CheckRclone() error {
@@ -72,7 +72,7 @@ func (p *windowsPlatform) TailscaleInstallHint() string {
 }
 
 func (p *windowsPlatform) registerBatPath() string {
-	return filepath.Join(p.AutosyncBinDir(), "register-daemon.bat")
+	return filepath.Join(p.BinDir(), "register-daemon.bat")
 }
 
 // RegisterDaemon generates a register-daemon.bat file instead of running schtasks directly.
@@ -80,14 +80,14 @@ func (p *windowsPlatform) registerBatPath() string {
 // UAC elevation via manifest breaks stdin. The .bat file can be right-click → Run as administrator.
 func (p *windowsPlatform) RegisterDaemon(binPath, configPath string) error {
 	batContent := fmt.Sprintf("@echo off\r\n"+
-		"echo Registering E2EE-Autosync daemon...\r\n"+
-		"schtasks /Create /TN \"E2EE-Autosync\" /TR \"\\\"%s\\\" daemon --config \\\"%s\\\"\" /SC ONLOGON /F\r\n"+
+		"echo Registering E2EE-Sync daemon...\r\n"+
+		"schtasks /Create /TN \"E2EE-Sync\" /TR \"\\\"%s\\\" daemon --config \\\"%s\\\"\" /SC ONLOGON /F\r\n"+
 		"if %%errorlevel%% neq 0 (\r\n"+
 		"    echo Failed. Please run this file as administrator.\r\n"+
 		"    pause\r\n"+
 		"    exit /b 1\r\n"+
 		")\r\n"+
-		"schtasks /Run /TN \"E2EE-Autosync\"\r\n"+
+		"schtasks /Run /TN \"E2EE-Sync\"\r\n"+
 		"echo Done. e2ee-sync daemon will start at every logon.\r\n"+
 		"pause\r\n",
 		binPath, configPath)
@@ -101,8 +101,8 @@ func (p *windowsPlatform) RegisterDaemon(binPath, configPath string) error {
 
 func (p *windowsPlatform) UnregisterDaemon() error {
 	// Best-effort stop and delete scheduled task
-	_ = exec.Command("schtasks", "/End", "/TN", "E2EE-Autosync").Run()
-	_ = exec.Command("schtasks", "/Delete", "/TN", "E2EE-Autosync", "/F").Run()
+	_ = exec.Command("schtasks", "/End", "/TN", "E2EE-Sync").Run()
+	_ = exec.Command("schtasks", "/Delete", "/TN", "E2EE-Sync", "/F").Run()
 	// Remove .bat file
 	_ = os.Remove(p.registerBatPath())
 	return nil
@@ -115,7 +115,7 @@ func (p *windowsPlatform) RegisterDaemonHint(binPath, configPath string) string 
 // DaemonStatus checks if the scheduled task is registered and running.
 // Command failure is not an error — it means the task is not registered.
 func (p *windowsPlatform) DaemonStatus() (string, error) {
-	cmd := exec.Command("schtasks", "/Query", "/TN", "E2EE-Autosync", "/FO", "CSV", "/NH")
+	cmd := exec.Command("schtasks", "/Query", "/TN", "E2EE-Sync", "/FO", "CSV", "/NH")
 	out, err := cmd.Output()
 	if err != nil {
 		return "not-installed", nil

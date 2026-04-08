@@ -28,12 +28,12 @@ func (p *darwinPlatform) SyncDir() string {
 	return filepath.Join(p.home, "sync")
 }
 
-func (p *darwinPlatform) AutosyncBinDir() string {
+func (p *darwinPlatform) BinDir() string {
 	return "/usr/local/bin"
 }
 
-func (p *darwinPlatform) AutosyncConfigDir() string {
-	return filepath.Join(p.home, ".config", "autosync")
+func (p *darwinPlatform) ConfigDir() string {
+	return filepath.Join(p.home, ".config", "e2ee-sync")
 }
 
 func (p *darwinPlatform) CheckRclone() error {
@@ -74,8 +74,8 @@ func (p *darwinPlatform) RegisterDaemon(binPath, configPath string) error {
 		return fmt.Errorf("failed to create LaunchAgents dir: %w", err)
 	}
 
-	logPath := filepath.Join(p.home, ".config", "autosync", "autosync.log")
-	errPath := filepath.Join(p.home, ".config", "autosync", "autosync.err")
+	logPath := filepath.Join(p.home, ".config", "e2ee-sync", "e2ee-sync.log")
+	errPath := filepath.Join(p.home, ".config", "e2ee-sync", "e2ee-sync.err")
 
 	// Escape paths for XML safety (handles &, <, >, etc.)
 	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
@@ -83,7 +83,7 @@ func (p *darwinPlatform) RegisterDaemon(binPath, configPath string) error {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.autosync</string>
+    <string>com.e2ee-sync</string>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
@@ -104,7 +104,7 @@ func (p *darwinPlatform) RegisterDaemon(binPath, configPath string) error {
 `, html.EscapeString(binPath), html.EscapeString(configPath),
 		html.EscapeString(logPath), html.EscapeString(errPath))
 
-	plistPath := filepath.Join(agentDir, "com.autosync.plist")
+	plistPath := filepath.Join(agentDir, "com.e2ee-sync.plist")
 	if err := os.WriteFile(plistPath, []byte(plist), 0644); err != nil {
 		return fmt.Errorf("failed to write plist: %w", err)
 	}
@@ -116,7 +116,7 @@ func (p *darwinPlatform) RegisterDaemon(binPath, configPath string) error {
 }
 
 func (p *darwinPlatform) UnregisterDaemon() error {
-	plistPath := filepath.Join(p.home, "Library", "LaunchAgents", "com.autosync.plist")
+	plistPath := filepath.Join(p.home, "Library", "LaunchAgents", "com.e2ee-sync.plist")
 	// Best-effort unload — agent may not be loaded
 	_ = exec.Command("launchctl", "unload", plistPath).Run()
 	if err := os.Remove(plistPath); err != nil && !os.IsNotExist(err) {
@@ -126,16 +126,16 @@ func (p *darwinPlatform) UnregisterDaemon() error {
 }
 
 func (p *darwinPlatform) RegisterDaemonHint(binPath, configPath string) string {
-	plistPath := filepath.Join(p.home, "Library", "LaunchAgents", "com.autosync.plist")
+	plistPath := filepath.Join(p.home, "Library", "LaunchAgents", "com.e2ee-sync.plist")
 	return fmt.Sprintf("Manual registration:\n"+
 		"  1. Create %s with appropriate plist content\n"+
 		"  2. launchctl load %s", plistPath, plistPath)
 }
 
-// DaemonStatus returns the current state of the autosync LaunchAgent.
+// DaemonStatus returns the current state of the e2ee-sync LaunchAgent.
 // Command failure is not an error — it means the agent is not loaded.
 func (p *darwinPlatform) DaemonStatus() (string, error) {
-	cmd := exec.Command("launchctl", "list", "com.autosync")
+	cmd := exec.Command("launchctl", "list", "com.e2ee-sync")
 	out, err := cmd.Output()
 	if err != nil {
 		return "not-installed", nil

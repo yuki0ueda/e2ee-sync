@@ -5,16 +5,16 @@ import (
 	"testing"
 )
 
-func TestRenderAutosyncConfig_WithHub(t *testing.T) {
-	data := AutosyncConfigData{
+func TestRenderDaemonConfig_WithHub(t *testing.T) {
+	data := DaemonConfigData{
 		UseHub:         true,
 		SyncDir:        "/home/user/sync",
 		TrashDir:       "/home/user/sync/.trash",
 		FilterFilePath: "/home/user/.config/rclone/filter-rules.txt",
 	}
-	got, err := RenderAutosyncConfig(data)
+	got, err := RenderDaemonConfig(data)
 	if err != nil {
-		t.Fatalf("RenderAutosyncConfig failed: %v", err)
+		t.Fatalf("RenderDaemonConfig failed: %v", err)
 	}
 	if !strings.Contains(got, "primary_remote: hub-crypt:") {
 		t.Error("Expected primary_remote: hub-crypt:")
@@ -30,15 +30,15 @@ func TestRenderAutosyncConfig_WithHub(t *testing.T) {
 	}
 }
 
-func TestRenderAutosyncConfig_WithoutHub(t *testing.T) {
-	data := AutosyncConfigData{
+func TestRenderDaemonConfig_WithoutHub(t *testing.T) {
+	data := DaemonConfigData{
 		UseHub:         false,
 		SyncDir:        "/home/user/sync",
 		FilterFilePath: "/home/user/.config/rclone/filter-rules.txt",
 	}
-	got, err := RenderAutosyncConfig(data)
+	got, err := RenderDaemonConfig(data)
 	if err != nil {
-		t.Fatalf("RenderAutosyncConfig failed: %v", err)
+		t.Fatalf("RenderDaemonConfig failed: %v", err)
 	}
 	if !strings.Contains(got, "primary_remote: cloud-crypt:") {
 		t.Error("Expected primary_remote: cloud-crypt:")

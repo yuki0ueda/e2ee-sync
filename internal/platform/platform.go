@@ -5,8 +5,8 @@ type Platform interface {
 	// Paths
 	RcloneConfigDir() string
 	SyncDir() string
-	AutosyncBinDir() string
-	AutosyncConfigDir() string
+	BinDir() string
+	ConfigDir() string
 
 	// Prerequisite checks
 	CheckRclone() error

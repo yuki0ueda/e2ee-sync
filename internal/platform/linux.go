@@ -30,15 +30,15 @@ func (p *linuxPlatform) SyncDir() string {
 	return filepath.Join(p.home, "sync")
 }
 
-func (p *linuxPlatform) AutosyncBinDir() string {
+func (p *linuxPlatform) BinDir() string {
 	return filepath.Join(p.home, ".local", "bin")
 }
 
-func (p *linuxPlatform) AutosyncConfigDir() string {
+func (p *linuxPlatform) ConfigDir() string {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return filepath.Join(xdg, "autosync")
+		return filepath.Join(xdg, "e2ee-sync")
 	}
-	return filepath.Join(p.home, ".config", "autosync")
+	return filepath.Join(p.home, ".config", "e2ee-sync")
 }
 
 func (p *linuxPlatform) CheckRclone() error {
@@ -93,14 +93,14 @@ RestartSec=10
 WantedBy=default.target
 `, binPath, configPath)
 
-	unitPath := filepath.Join(unitDir, "autosync.service")
+	unitPath := filepath.Join(unitDir, "e2ee-sync.service")
 	if err := os.WriteFile(unitPath, []byte(unit), 0644); err != nil {
 		return fmt.Errorf("failed to write unit file: %w", err)
 	}
 
 	cmds := [][]string{
 		{"systemctl", "--user", "daemon-reload"},
-		{"systemctl", "--user", "enable", "--now", "autosync.service"},
+		{"systemctl", "--user", "enable", "--now", "e2ee-sync.service"},
 	}
 	for _, args := range cmds {
 		if err := exec.Command(args[0], args[1:]...).Run(); err != nil {
@@ -112,8 +112,8 @@ WantedBy=default.target
 
 func (p *linuxPlatform) UnregisterDaemon() error {
 	// Best-effort disable — service may not be registered yet
-	_ = exec.Command("systemctl", "--user", "disable", "--now", "autosync.service").Run()
-	unitPath := filepath.Join(p.home, ".config", "systemd", "user", "autosync.service")
+	_ = exec.Command("systemctl", "--user", "disable", "--now", "e2ee-sync.service").Run()
+	unitPath := filepath.Join(p.home, ".config", "systemd", "user", "e2ee-sync.service")
 	if err := os.Remove(unitPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove unit file: %w", err)
 	}
@@ -126,15 +126,15 @@ func (p *linuxPlatform) RegisterDaemonHint(binPath, configPath string) string {
 	return fmt.Sprintf("Manual registration:\n"+
 		"  1. Create %s with appropriate unit content\n"+
 		"  2. systemctl --user daemon-reload\n"+
-		"  3. systemctl --user enable --now autosync.service",
-		filepath.Join(p.home, ".config", "systemd", "user", "autosync.service"))
+		"  3. systemctl --user enable --now e2ee-sync.service",
+		filepath.Join(p.home, ".config", "systemd", "user", "e2ee-sync.service"))
 }
 
-// DaemonStatus returns the current state of the autosync service.
+// DaemonStatus returns the current state of the e2ee-sync daemon.
 // Returns the status string and nil error — command failure is not an error
 // condition here, it simply means the service is inactive or not installed.
 func (p *linuxPlatform) DaemonStatus() (string, error) {
-	cmd := exec.Command("systemctl", "--user", "is-active", "autosync.service")
+	cmd := exec.Command("systemctl", "--user", "is-active", "e2ee-sync.service")
 	out, _ := cmd.Output()
 	status := strings.TrimSpace(string(out))
 	if status == "" {
