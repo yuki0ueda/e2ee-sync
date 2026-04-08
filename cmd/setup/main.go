@@ -106,8 +106,8 @@ func runSetup() {
 		fatalf("tailscale not available: %v", err)
 	}
 
-	fmt.Println("  e2ee-sync-hub enables fast LAN sync (optional).")
-	fmt.Println("  Without it, devices sync directly via Cloudflare R2.")
+	fmt.Println("  e2ee-sync-hub enables fast direct sync via Tailscale (optional).")
+	fmt.Println("  Without it, devices sync via Cloudflare R2.")
 	useHub, _ := credential.Confirm("Do you have an e2ee-sync-hub?")
 	if useHub {
 		if err := checkHubReachability(); err != nil {
