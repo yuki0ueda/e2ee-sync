@@ -1,0 +1,24 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+
+# Go
+*.test
+*.out
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / tools
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# Config / secrets
+.env
+*.log

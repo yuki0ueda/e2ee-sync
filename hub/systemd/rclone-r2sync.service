@@ -1,0 +1,10 @@
+[Unit]
+Description=Sync encrypted data to R2
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rclone sync /data/encrypted r2-raw:e2ee-sync \
+  --checksum \
+  --transfers 8 \
+  --verbose \
+  --log-file /var/log/rclone-r2sync.log

@@ -1,0 +1,17 @@
+[Unit]
+Description=rclone WebDAV server for bisync
+After=network-online.target tailscaled.service rclone-catchup.service
+Requires=rclone-catchup.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/rclone serve webdav /data/encrypted \
+  --addr 0.0.0.0:8080 \
+  --user rclone \
+  --pass __WEBDAV_PASSWORD__ \
+  --vfs-cache-mode minimal
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

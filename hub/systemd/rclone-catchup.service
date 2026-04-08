@@ -1,0 +1,16 @@
+[Unit]
+Description=Catch up from R2 on boot
+After=network-online.target
+Before=rclone-webdav.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/rclone sync r2-raw:e2ee-sync /data/encrypted \
+  --checksum \
+  --transfers 8 \
+  --verbose \
+  --log-file /var/log/rclone-catchup.log
+
+[Install]
+WantedBy=multi-user.target
