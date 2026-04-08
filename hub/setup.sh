@@ -86,7 +86,7 @@ cat > /root/.config/rclone/rclone.conf << EOF
 type = alias
 remote = /data/encrypted
 
-[r2-raw]
+[cloud-raw]
 type = s3
 provider = Cloudflare
 access_key_id = ${R2_ACCESS_KEY}
@@ -102,11 +102,11 @@ ok "rclone.conf written"
 # --- Connection test ---
 
 info "Testing R2 connection..."
-if rclone lsd r2-raw:e2ee-sync 2>/dev/null; then
+if rclone lsd cloud-raw:e2ee-sync 2>/dev/null; then
     ok "R2 connection OK"
 else
     # Bucket may not have any directories yet — try listing objects
-    if rclone ls r2-raw:e2ee-sync --max-depth 1 2>/dev/null; then
+    if rclone ls cloud-raw:e2ee-sync --max-depth 1 2>/dev/null; then
         ok "R2 connection OK (bucket exists, no directories)"
     else
         warn "R2 connection test failed. Check credentials and try again."

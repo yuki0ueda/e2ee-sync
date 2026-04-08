@@ -171,7 +171,7 @@ cat > ~/.config/rclone/rclone.conf << 'EOF'
 type = alias
 remote = /data/encrypted
 
-[r2-raw]
+[cloud-raw]
 type = s3
 provider = Cloudflare
 access_key_id = YOUR_R2_ACCESS_KEY
@@ -249,7 +249,7 @@ ssh e2ee-sync-hub "systemctl stop rclone-webdav"
 
 # 2. Sync via R2 fallback
 echo "failover test" > ~/sync/failover.txt
-rclone bisync ~/sync/ r2-crypt: --checksum --verbose
+rclone bisync ~/sync/ cloud-crypt: --checksum --verbose
 
 # 3. Restart hub
 ssh e2ee-sync-hub "systemctl start rclone-webdav"

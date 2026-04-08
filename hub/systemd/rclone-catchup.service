@@ -6,7 +6,7 @@ Before=rclone-webdav.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/rclone sync r2-raw:e2ee-sync /data/encrypted \
+ExecStart=/usr/bin/rclone sync cloud-raw:e2ee-sync /data/encrypted \
   --checksum \
   --transfers 8 \
   --verbose \
