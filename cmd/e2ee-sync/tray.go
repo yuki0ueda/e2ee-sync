@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -144,7 +145,11 @@ func onReady(cfg *Config, syncer *Syncer) {
 			switch st.State {
 			case StateIdle:
 				systray.SetIcon(iconIdle)
-				systray.SetTooltip("e2ee-sync: " + st.Message)
+				tooltip := "e2ee-sync: " + st.Message
+				if strings.Contains(st.Message, "fallback") {
+					tooltip = "e2ee-sync: Hub unreachable, syncing via cloud"
+				}
+				systray.SetTooltip(tooltip)
 				mStatus.SetTitle("Status: " + st.Message)
 			case StateSyncing:
 				systray.SetIcon(iconSyncing)

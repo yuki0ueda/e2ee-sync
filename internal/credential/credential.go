@@ -73,14 +73,14 @@ type Credentials struct {
 	EncryptionSalt     string
 	S3AccessKeyID      string
 	S3SecretAccessKey  string
-	S3Endpoint         string // full endpoint URL for non-R2 backends
+	S3Endpoint         string
 	S3Region           string
 	Backend            Backend
 }
 
 // SelectBackend prompts the user to choose a cloud storage backend.
 func SelectBackend() (Backend, error) {
-	fmt.Fprintln(os.Stderr, "\n  Cloud storage backend:")
+	fmt.Fprintln(os.Stderr, "\n  Which cloud storage are you using?")
 	for i, b := range Backends {
 		fmt.Fprintf(os.Stderr, "    %d) %s\n", i+1, b.Name)
 	}
@@ -108,63 +108,84 @@ func SelectBackend() (Backend, error) {
 // Collect interactively prompts for all required credentials.
 // If useHub is false, the WebDAV password prompt is skipped.
 func Collect(useHub bool, backend Backend) (*Credentials, error) {
-	fmt.Fprintln(os.Stderr)
-
+	// --- Hub credentials ---
 	var webdavPass string
 	if useHub {
+		fmt.Fprintln(os.Stderr, "\n  --- Hub Credentials ---")
 		var err error
-		webdavPass, err = ReadPassword("WebDAV password: ")
+		webdavPass, err = ReadPassword("  WebDAV password: ")
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	encPass, err := ReadPassword("Encryption password: ")
+	// --- Encryption keys ---
+	fmt.Fprintln(os.Stderr, "\n  --- Encryption Keys ---")
+	fmt.Fprintln(os.Stderr, "  These encrypt your files. Use the SAME keys on all devices.")
+
+	encPass, err := ReadPassword("  Encryption password: ")
 	if err != nil {
 		return nil, err
 	}
+	if encPass == "" {
+		return nil, fmt.Errorf("encryption password cannot be empty")
+	}
 
-	encSalt, err := ReadPassword("Encryption salt: ")
+	encSalt, err := ReadPassword("  Encryption salt: ")
 	if err != nil {
 		return nil, err
 	}
+	if encSalt == "" {
+		return nil, fmt.Errorf("encryption salt cannot be empty")
+	}
 
-	s3Key, err := ReadLine("Access Key ID: ")
+	// --- Cloud storage credentials ---
+	fmt.Fprintf(os.Stderr, "\n  --- %s Credentials ---\n", backend.Name)
+	fmt.Fprintln(os.Stderr, "  Get these from your cloud provider's API token page.")
+
+	s3Key, err := ReadLine("  Access Key ID: ")
 	if err != nil {
 		return nil, err
 	}
+	if s3Key == "" {
+		return nil, fmt.Errorf("access key ID cannot be empty")
+	}
 
-	s3Secret, err := ReadPassword("Secret Access Key: ")
+	s3Secret, err := ReadPassword("  Secret Access Key: ")
 	if err != nil {
 		return nil, err
+	}
+	if s3Secret == "" {
+		return nil, fmt.Errorf("secret access key cannot be empty")
 	}
 
 	var endpoint, region string
 	switch backend.Provider {
 	case "Cloudflare":
-		accountID, err := ReadLine("R2 Account ID: ")
+		fmt.Fprintln(os.Stderr, "  Find your endpoint in Cloudflare Dashboard → R2 → Overview.")
+		fmt.Fprintln(os.Stderr, "  Example: https://abc123def456.r2.cloudflarestorage.com")
+		endpoint, err = ReadLine("  S3 Endpoint URL: ")
 		if err != nil {
 			return nil, err
 		}
-		endpoint = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountID)
 		region = "auto"
 	case "AWS":
-		region, err = ReadLine("AWS Region (e.g., us-east-1): ")
+		region, err = ReadLine("  AWS Region (e.g., us-east-1): ")
 		if err != nil {
 			return nil, err
 		}
 	case "B2":
-		region, err = ReadLine("B2 Region (e.g., us-west-004): ")
+		region, err = ReadLine("  B2 Region (e.g., us-west-004): ")
 		if err != nil {
 			return nil, err
 		}
 		endpoint = fmt.Sprintf("https://s3.%s.backblazeb2.com", region)
 	default:
-		endpoint, err = ReadLine("S3 Endpoint URL: ")
+		endpoint, err = ReadLine("  S3 Endpoint URL: ")
 		if err != nil {
 			return nil, err
 		}
-		region, err = ReadLine("Region (or 'auto'): ")
+		region, err = ReadLine("  Region (or 'auto'): ")
 		if err != nil {
 			return nil, err
 		}

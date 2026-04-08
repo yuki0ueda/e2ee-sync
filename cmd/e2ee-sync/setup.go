@@ -35,16 +35,17 @@ func runSetup() {
 		fatalf("tailscale not available: %v", err)
 	}
 
-	fmt.Println("  e2ee-sync-hub enables fast direct sync via Tailscale (optional).")
-	fmt.Println("  Without it, devices sync via Cloudflare R2.")
+	fmt.Println("  e2ee-sync-hub is an optional relay server (Proxmox LXC).")
+	fmt.Println("  It enables faster sync via Tailscale direct connection.")
+	fmt.Println("  If you haven't set up a hub, select N.")
 	useHub, _ := credential.Confirm("Do you have an e2ee-sync-hub?")
 	if useHub {
 		if err := checkHubReachability(); err != nil {
 			fatalf("%v", err)
 		}
-		ok("Prerequisites OK (hub mode)")
+		ok("Prerequisites OK (hub mode: sync via hub + cloud fallback)")
 	} else {
-		ok("Prerequisites OK (R2-only mode)")
+		ok("Prerequisites OK (direct mode: sync via cloud storage)")
 	}
 
 	// Step 2: Credential input
@@ -129,11 +130,13 @@ func runSetup() {
 		authFailed := false
 		for _, t := range testRemotes {
 			if err := retryConnectionTest(rc, t.name, t.remote); err != nil {
-				if useHub && isUnauthorized(err) && t.name == "hub-webdav" && authAttempt < maxAuthRetries-1 {
-					warnf("Authentication failed for %s (401 Unauthorized)", t.name)
-					warnf("Please re-enter credentials.")
-					authFailed = true
-					break
+				if authAttempt < maxAuthRetries-1 {
+					warnf("Connection test failed for %s: %v", t.name, err)
+					yes, _ := credential.Confirm("  Re-enter credentials?")
+					if yes {
+						authFailed = true
+						break
+					}
 				}
 				warnf("Connection test failed for %s: %v", t.name, err)
 				warnf("You can re-run 'e2ee-sync verify' after fixing the issue.")
@@ -203,8 +206,12 @@ func runSetup() {
 		} else {
 			if runtime.GOOS == "windows" {
 				ok("register-daemon.bat created")
-				fmt.Println("  To complete daemon setup, right-click register-daemon.bat → Run as administrator")
-				fmt.Printf("  Location: %s\n", filepath.Join(plat.AutosyncBinDir(), "register-daemon.bat"))
+				fmt.Println()
+				fmt.Println("  *** ACTION REQUIRED ***")
+				fmt.Println("  Sync will NOT start until you register the daemon:")
+				fmt.Println("  1. Open this folder in Explorer:")
+				fmt.Printf("     %s\n", plat.AutosyncBinDir())
+				fmt.Println("  2. Right-click register-daemon.bat → Run as administrator")
 			} else {
 				ok("Daemon registered and started")
 			}

@@ -62,12 +62,14 @@ Cloudflare Dashboard でバケットと API トークンを作成します。
 ```
 Access Key ID: xxxxxxxxxxxxxxxx
 Secret Access Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-Endpoint: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+S3 エンドポイント URL: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 ```
+
+エンドポイントは R2 → Overview → S3 API で確認できます。管轄区域固有のエンドポイントがある場合はそちらを使用してください。
 
 ### 2. パスワードの準備
 
-以下の3つのパスワードを用意する。**英数字のみ**を推奨（シェルエスケープ問題を回避）。
+以下の3つのパスワードを用意する。特殊文字も使用可能です。
 
 | パスワード | 用途 | 全デバイス共通？ |
 |-----------|------|----------------|
@@ -137,6 +139,25 @@ e2ee-sync version     # バージョン表示
 ```
 
 引数なしで起動すると対話メニューが表示されます。
+
+### デバイスの追加
+
+2台目以降は share/join でクレデンシャル入力を省略できます:
+
+```bash
+# 設定済みデバイスで
+e2ee-sync share
+
+# 新しいデバイスで（share の出力からアドレスをコピー）
+e2ee-sync join <ip:port>
+```
+
+Tailscale 経由で全クレデンシャルが自動転送されます。共有 tailnet（チーム、家族）では `--code` でセキュリティを追加:
+
+```bash
+e2ee-sync share --code
+e2ee-sync join <ip:port> --code <CODE>
+```
 
 ## 対応プラットフォーム
 

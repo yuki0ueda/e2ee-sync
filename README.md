@@ -62,12 +62,14 @@ Note these values (needed during device setup):
 ```
 Access Key ID: xxxxxxxxxxxxxxxx
 Secret Access Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-Endpoint: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+S3 Endpoint URL: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 ```
+
+Find your endpoint in R2 → Overview → S3 API. Use the jurisdiction-specific endpoint if applicable.
 
 ### 2. Prepare Passwords
 
-Prepare these three passwords. **Use alphanumeric characters only** to avoid shell escaping issues.
+Prepare these three passwords. Special characters are supported.
 
 | Password | Purpose | Shared across devices? |
 |----------|---------|----------------------|
@@ -137,6 +139,25 @@ e2ee-sync version     # Show version
 ```
 
 Running without arguments shows an interactive menu.
+
+### Adding More Devices
+
+For the 2nd device and beyond, use share/join to skip credential entry:
+
+```bash
+# On an already-configured device
+e2ee-sync share
+
+# On the new device (copy the address from share output)
+e2ee-sync join <ip:port>
+```
+
+All credentials are transferred automatically via Tailscale. For shared tailnets (teams, families), add `--code` for security:
+
+```bash
+e2ee-sync share --code
+e2ee-sync join <ip:port> --code <CODE>
+```
 
 ## Platform Support
 
