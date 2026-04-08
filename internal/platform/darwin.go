@@ -87,6 +87,7 @@ func (p *darwinPlatform) RegisterDaemon(binPath, configPath string) error {
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
+        <string>daemon</string>
         <string>--config</string>
         <string>%s</string>
     </array>

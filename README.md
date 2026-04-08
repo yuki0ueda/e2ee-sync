@@ -100,15 +100,10 @@ See [`hub/README.md`](hub/README.md) for the Proxmox LXC setup guide.
 
 ### 4. Device Setup
 
-Download the latest binaries from [GitHub Releases](https://github.com/yuki0ueda/e2ee-sync/releases):
-
-- `e2ee-sync-setup` — one-time setup CLI
-- `autosync` — sync daemon (runs continuously)
-
-Place both binaries **in the same directory** (e.g., `~/Downloads/`), then run:
+Download `e2ee-sync` for your OS from [GitHub Releases](https://github.com/yuki0ueda/e2ee-sync/releases) and run:
 
 ```bash
-e2ee-sync-setup setup
+e2ee-sync setup
 ```
 
 The CLI walks you through:
@@ -118,38 +113,38 @@ The CLI walks you through:
 3. rclone.conf generation with obscured passwords
 4. Filter rules and sync directory creation
 5. Connection testing and initial bisync
-6. Autosync daemon deployment and registration
+6. Daemon deployment and registration
 
-The setup automatically copies `autosync` to the appropriate location and registers it as a daemon:
+The setup copies `e2ee-sync` to the appropriate location and registers the daemon:
 
-| OS | autosync installed to | Daemon type |
-|----|----------------------|-------------|
-| Linux | `~/.local/bin/autosync` | systemd user service |
-| macOS | `/usr/local/bin/autosync` | LaunchAgent |
-| Windows | `%USERPROFILE%\.local\bin\autosync.exe` | Task Scheduler (via `register-daemon.bat`) |
+| OS | Installed to | Daemon type |
+|----|-------------|-------------|
+| Linux | `~/.local/bin/e2ee-sync` | systemd user service |
+| macOS | `/usr/local/bin/e2ee-sync` | LaunchAgent |
+| Windows | `%USERPROFILE%\.local\bin\e2ee-sync.exe` | Task Scheduler (via `register-daemon.bat`) |
 
-**Windows note**: Daemon registration requires administrator privileges. The setup generates `register-daemon.bat` — right-click it and select "Run as administrator" to complete the registration. autosync runs as a background process with no console window.
+**Windows note**: Daemon registration requires administrator privileges. The setup generates `register-daemon.bat` — right-click it and select "Run as administrator" to complete the registration. The daemon runs as a background process with no console window.
 
-After setup, `e2ee-sync-setup` itself is no longer needed for daily use. For upgrades, download the new version of both binaries into the same directory and run `e2ee-sync-setup upgrade`.
+For upgrades, download the new version and run `e2ee-sync upgrade`.
 
 ### Other Commands
 
 ```bash
-e2ee-sync-setup verify      # Verify existing configuration
-e2ee-sync-setup upgrade     # Update autosync binary
-e2ee-sync-setup uninstall   # Remove daemon and configuration
-e2ee-sync-setup version     # Show version
+e2ee-sync verify      # Verify existing configuration
+e2ee-sync upgrade     # Update binary in place
+e2ee-sync uninstall   # Remove daemon and configuration
+e2ee-sync version     # Show version
 ```
 
 Running without arguments shows an interactive menu.
 
 ## Platform Support
 
-| OS | Daemon | Binary Suffix |
-|----|--------|---------------|
-| Linux | systemd user service | `-linux-x64` / `-linux-arm64` |
-| macOS | LaunchAgent | `-mac-x64` / `-mac-arm64` |
-| Windows | Task Scheduler (`register-daemon.bat`) | `-win-x64.exe` / `-win-arm64.exe` |
+| OS | Daemon | Download |
+|----|--------|----------|
+| Linux | systemd user service | `e2ee-sync-linux-x64` / `e2ee-sync-linux-arm64` |
+| macOS | LaunchAgent | `e2ee-sync-mac-x64` / `e2ee-sync-mac-arm64` |
+| Windows | Task Scheduler (`register-daemon.bat`) | `e2ee-sync-win-x64.exe` / `e2ee-sync-win-arm64.exe` |
 
 ## Building from Source
 
@@ -171,8 +166,7 @@ Requires Go 1.25+.
 ```
 e2ee-sync/
 ├── cmd/
-│   ├── setup/       # e2ee-sync-setup CLI
-│   └── autosync/    # Sync daemon
+│   └── e2ee-sync/   # Single binary: setup + daemon + verify + upgrade
 ├── internal/
 │   ├── platform/    # OS-specific implementations
 │   ├── credential/  # Interactive credential input

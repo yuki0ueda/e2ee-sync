@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,20 +9,17 @@ import (
 	"github.com/yuki0ueda/e2ee-sync/internal/version"
 )
 
-func main() {
-	showVersion := flag.Bool("version", false, "Show version")
-	configPath := flag.String("config", "", "Path to config.json")
-	flag.Parse()
-
-	if *showVersion || (len(os.Args) > 1 && os.Args[1] == "version") {
-		fmt.Printf("autosync %s\n", version.String())
-		return
-	}
+func runDaemon() {
+	fs := flag.NewFlagSet("daemon", flag.ExitOnError)
+	configPath := fs.String("config", "", "Path to config.json")
+	fs.Parse(os.Args[2:])
 
 	if *configPath == "" {
-		fmt.Fprintln(os.Stderr, "Usage: autosync --config <path/to/config.json>")
-		os.Exit(1)
+		log.Fatal("Usage: e2ee-sync daemon --config <path/to/config.json>")
 	}
+
+	// Detach from console on Windows (no window in daemon mode)
+	detachConsole()
 
 	// Set up file logging next to config.json
 	logPath := filepath.Join(filepath.Dir(*configPath), "autosync.log")
@@ -38,7 +34,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	log.Printf("autosync %s starting", version.String())
+	log.Printf("e2ee-sync daemon %s starting", version.String())
 	log.Printf("Log file: %s", logPath)
 	log.Printf("Sync dir: %s", cfg.SyncDir)
 	log.Printf("Primary remote: %s", cfg.PrimaryRemote)

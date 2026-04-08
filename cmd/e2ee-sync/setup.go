@@ -18,83 +18,12 @@ import (
 	"github.com/yuki0ueda/e2ee-sync/internal/version"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		interactiveMenu()
-		return
-	}
-	switch os.Args[1] {
-	case "setup":
-		runSetup()
-	case "upgrade":
-		runUpgrade()
-	case "verify":
-		runVerify()
-	case "uninstall":
-		runUninstall()
-	case "version":
-		fmt.Printf("e2ee-sync-setup %s\n", version.String())
-	default:
-		printUsage()
-		os.Exit(1)
-	}
-}
-
-func printUsage() {
-	fmt.Fprintf(os.Stderr, `e2ee-sync-setup %s
-
-Usage:
-  e2ee-sync-setup <command>
-
-Commands:
-  setup       Full device setup (interactive)
-  upgrade     Update autosync binary
-  verify      Verify existing configuration
-  uninstall   Remove daemon and configuration
-  version     Show version
-`, version.String())
-}
-
-// --- Interactive Menu ---
-
-func interactiveMenu() {
-	fmt.Printf("\n=== E2EE File Sync Setup %s ===\n\n", version.String())
-	fmt.Println("  1) Setup    — New device setup")
-	fmt.Println("  2) Upgrade  — Update autosync to latest version")
-	fmt.Println("  3) Verify   — Verify connection and configuration")
-	fmt.Println("  4) Quit")
-	fmt.Println()
-
-	choice, err := credential.ReadLine("Select [1-4]: ")
-	if err != nil {
-		fatalf("Failed to read input: %v", err)
-	}
-
-	switch strings.TrimSpace(choice) {
-	case "1":
-		runSetup()
-	case "2":
-		runUpgrade()
-	case "3":
-		runVerify()
-	case "4":
-		return
-	default:
-		fmt.Fprintln(os.Stderr, "Invalid selection.")
-		os.Exit(1)
-	}
-
-	waitIfDoubleClicked()
-}
-
-// --- Setup ---
-
 func runSetup() {
 	plat := platform.Detect()
 	rc := rclone.NewClient("")
 
 	// Step 1: Prerequisites + hub mode selection
-	step(1, 10, "Checking prerequisites")
+	step(1, 9, "Checking prerequisites")
 	if err := plat.CheckRclone(); err != nil {
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, plat.RcloneInstallHint())
@@ -119,7 +48,7 @@ func runSetup() {
 	}
 
 	// Step 2: Credential input
-	step(2, 10, "Collecting credentials")
+	step(2, 9, "Collecting credentials")
 	var creds *credential.Credentials
 	creds, err := credential.Collect(useHub)
 	if err != nil {
@@ -128,7 +57,7 @@ func runSetup() {
 	ok("Credentials collected")
 
 	// Step 3: Generate rclone.conf via rclone config create
-	step(3, 10, "Generating rclone.conf")
+	step(3, 9, "Generating rclone.conf")
 	configDir := plat.RcloneConfigDir()
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		fatalf("Failed to create config dir: %v", err)
@@ -138,7 +67,6 @@ func runSetup() {
 	if err := createRcloneRemotes(rc, creds, useHub); err != nil {
 		fatalf("Failed to create rclone remotes: %v", err)
 	}
-	// Clear plaintext from memory
 	creds.WebDAVPassword = ""
 	creds.EncryptionPassword = ""
 	creds.EncryptionSalt = ""
@@ -146,7 +74,7 @@ func runSetup() {
 	ok("rclone.conf written to %s", confPath)
 
 	// Step 4: Filter rules
-	step(4, 10, "Writing filter-rules.txt")
+	step(4, 9, "Writing filter-rules.txt")
 	filterPath := filepath.Join(configDir, "filter-rules.txt")
 	if err := os.WriteFile(filterPath, []byte(tmpl.FilterRules()), 0644); err != nil {
 		fatalf("Failed to write filter-rules.txt: %v", err)
@@ -154,7 +82,7 @@ func runSetup() {
 	ok("filter-rules.txt written")
 
 	// Step 5: Sync directory
-	step(5, 10, "Creating sync directory")
+	step(5, 9, "Creating sync directory")
 	syncDir := plat.SyncDir()
 	if err := os.MkdirAll(syncDir, 0755); err != nil {
 		fatalf("Failed to create sync dir: %v", err)
@@ -166,7 +94,7 @@ func runSetup() {
 	ok("Sync directory: %s", syncDir)
 
 	// Step 6: Connection tests (with 401 re-entry loop for hub mode)
-	step(6, 10, "Testing connections")
+	step(6, 9, "Testing connections")
 	syncRemote := "r2-crypt:"
 	if useHub {
 		syncRemote = "hub-crypt:"
@@ -204,7 +132,7 @@ func runSetup() {
 					break
 				}
 				warnf("Connection test failed for %s: %v", t.name, err)
-				warnf("You can re-run 'e2ee-sync-setup verify' after fixing the issue.")
+				warnf("You can re-run 'e2ee-sync verify' after fixing the issue.")
 			} else {
 				ok("  %s: OK", t.name)
 			}
@@ -212,7 +140,6 @@ func runSetup() {
 		if !authFailed {
 			break
 		}
-		// Re-collect credentials and regenerate rclone.conf
 		fmt.Printf("\n  Re-enter credentials (attempt %d/%d):\n", authAttempt+2, maxAuthRetries)
 		creds, err = credential.Collect(useHub)
 		if err != nil {
@@ -229,7 +156,7 @@ func runSetup() {
 	}
 
 	// Step 7: Initial resync
-	step(7, 10, "Running initial bisync (resync)")
+	step(7, 9, "Running initial bisync (resync)")
 	if err := retryResync(rc, syncDir, syncRemote); err != nil {
 		warnf("Initial resync failed: %v", err)
 		warnf("You can run manually: rclone bisync %s %s --resync", syncDir, syncRemote)
@@ -237,18 +164,17 @@ func runSetup() {
 		ok("Initial resync completed")
 	}
 
-	// Step 8: Deploy autosync binary + config
-	step(8, 10, "Deploying autosync")
-	autosyncDst, err := deployAutosync(plat)
+	// Step 8: Deploy binary + config
+	step(8, 9, "Deploying e2ee-sync")
+	binDst, err := deploySelf(plat)
 	if err != nil {
-		warnf("Failed to deploy autosync: %v", err)
-		warnf("You can manually copy the autosync binary to %s", plat.AutosyncBinDir())
+		warnf("Failed to deploy: %v", err)
 	} else {
-		ok("autosync deployed to %s", autosyncDst)
+		ok("e2ee-sync deployed to %s", binDst)
 	}
 	autosyncConfigDir := plat.AutosyncConfigDir()
 	if err := os.MkdirAll(autosyncConfigDir, 0755); err != nil {
-		fatalf("Failed to create autosync config dir: %v", err)
+		fatalf("Failed to create config dir: %v", err)
 	}
 	configContent, err := tmpl.RenderAutosyncConfig(tmpl.AutosyncConfigData{
 		UseHub:         useHub,
@@ -256,7 +182,7 @@ func runSetup() {
 		FilterFilePath: filterPath,
 	})
 	if err != nil {
-		fatalf("Failed to render autosync config: %v", err)
+		fatalf("Failed to render config: %v", err)
 	}
 	autosyncConfigPath := filepath.Join(autosyncConfigDir, "config.json")
 	if err := os.WriteFile(autosyncConfigPath, []byte(configContent), 0600); err != nil {
@@ -265,14 +191,13 @@ func runSetup() {
 	ok("config.json written to %s", autosyncConfigPath)
 
 	// Step 9: Register daemon
-	step(9, 10, "Registering daemon")
-	if autosyncDst != "" {
-		if err := plat.RegisterDaemon(autosyncDst, autosyncConfigPath); err != nil {
+	step(9, 9, "Registering daemon")
+	if binDst != "" {
+		if err := plat.RegisterDaemon(binDst, autosyncConfigPath); err != nil {
 			warnf("Daemon registration failed: %v", err)
-			fmt.Fprintln(os.Stderr, plat.RegisterDaemonHint(autosyncDst, autosyncConfigPath))
+			fmt.Fprintln(os.Stderr, plat.RegisterDaemonHint(binDst, autosyncConfigPath))
 		} else {
 			if runtime.GOOS == "windows" {
-				// On Windows, RegisterDaemon generates a .bat file instead of registering directly
 				ok("register-daemon.bat created")
 				fmt.Println("  To complete daemon setup, right-click register-daemon.bat → Run as administrator")
 				fmt.Printf("  Location: %s\n", filepath.Join(plat.AutosyncBinDir(), "register-daemon.bat"))
@@ -281,20 +206,19 @@ func runSetup() {
 			}
 		}
 	} else {
-		warnf("Skipping daemon registration (autosync binary not deployed)")
+		warnf("Skipping daemon registration (binary not deployed)")
 	}
 
-	// Step 10: Completion summary
-	step(10, 10, "Complete")
+	// Summary
 	fmt.Println()
 	fmt.Println("=== Setup Complete ===")
 	fmt.Println()
 	fmt.Printf("  Sync directory:  %s\n", syncDir)
 	fmt.Printf("  rclone.conf:     %s\n", confPath)
 	fmt.Printf("  Filter rules:    %s\n", filterPath)
-	fmt.Printf("  Autosync config: %s\n", autosyncConfigPath)
-	if autosyncDst != "" {
-		fmt.Printf("  Autosync binary: %s\n", autosyncDst)
+	fmt.Printf("  Config:          %s\n", autosyncConfigPath)
+	if binDst != "" {
+		fmt.Printf("  Binary:          %s\n", binDst)
 	}
 	fmt.Println()
 	fmt.Println("Your files in ~/sync will now be synchronized automatically.")
@@ -305,21 +229,20 @@ func runSetup() {
 func runUpgrade() {
 	plat := platform.Detect()
 
-	// Find current autosync
-	autosyncPath := filepath.Join(plat.AutosyncBinDir(), autosyncBinaryName())
-	if _, err := os.Stat(autosyncPath); os.IsNotExist(err) {
-		fatalf("autosync not found at %s. Run 'e2ee-sync-setup setup' first.", autosyncPath)
+	binPath := filepath.Join(plat.AutosyncBinDir(), binaryName())
+	if _, err := os.Stat(binPath); os.IsNotExist(err) {
+		fatalf("e2ee-sync not found at %s. Run 'e2ee-sync setup' first.", binPath)
 	}
 
 	// Check version
-	cmd := exec.Command(autosyncPath, "--version")
+	cmd := exec.Command(binPath, "version")
 	out, err := cmd.Output()
 	if err != nil {
-		fatalf("Failed to get autosync version: %v", err)
+		fatalf("Failed to get version: %v", err)
 	}
 	currentVersion := strings.TrimSpace(string(out))
 	fmt.Printf("Current: %s\n", currentVersion)
-	fmt.Printf("New:     autosync %s\n", version.String())
+	fmt.Printf("New:     e2ee-sync %s\n", version.String())
 
 	if strings.Contains(currentVersion, version.Version) {
 		fmt.Println("Already up to date.")
@@ -332,25 +255,24 @@ func runUpgrade() {
 
 	// Replace binary
 	fmt.Println("Replacing binary...")
-	backupPath := autosyncPath + ".bak"
-	if err := os.Rename(autosyncPath, backupPath); err != nil {
+	backupPath := binPath + ".bak"
+	if err := os.Rename(binPath, backupPath); err != nil {
 		fatalf("Failed to backup old binary: %v", err)
 	}
-	if err := deployAutosyncTo(autosyncPath); err != nil {
-		// Restore backup
-		_ = os.Rename(backupPath, autosyncPath)
+	if _, err := deploySelf(plat); err != nil {
+		_ = os.Rename(backupPath, binPath)
 		fatalf("Failed to deploy new binary: %v", err)
 	}
 
 	// Restart daemon
 	fmt.Println("Restarting daemon...")
 	configPath := filepath.Join(plat.AutosyncConfigDir(), "config.json")
-	if err := plat.RegisterDaemon(autosyncPath, configPath); err != nil {
+	if err := plat.RegisterDaemon(binPath, configPath); err != nil {
 		warnf("Daemon restart failed: %v", err)
 	}
 
 	// Verify
-	cmd = exec.Command(autosyncPath, "--version")
+	cmd = exec.Command(binPath, "version")
 	out, err = cmd.Output()
 	if err != nil {
 		warnf("Version verification failed: %v", err)
@@ -369,7 +291,6 @@ func runVerify() {
 
 	fmt.Print("\n=== Verifying E2EE File Sync ===\n\n")
 
-	// Check prerequisites
 	fmt.Println("[Prerequisites]")
 	if err := plat.CheckRclone(); err != nil {
 		warnf("  rclone: %v", err)
@@ -384,7 +305,6 @@ func runVerify() {
 		ok("  tailscale: OK")
 	}
 
-	// Check files
 	fmt.Println("\n[Configuration Files]")
 	configDir := plat.RcloneConfigDir()
 	files := []string{
@@ -401,7 +321,6 @@ func runVerify() {
 		}
 	}
 
-	// Check sync dir
 	fmt.Println("\n[Sync Directory]")
 	syncDir := plat.SyncDir()
 	if _, err := os.Stat(syncDir); err != nil {
@@ -411,12 +330,10 @@ func runVerify() {
 		ok("  %s: OK", syncDir)
 	}
 
-	// Detect hub mode from rclone.conf
 	confPath := filepath.Join(configDir, "rclone.conf")
 	confBytes, _ := os.ReadFile(confPath)
 	hubConfigured := strings.Contains(string(confBytes), "[hub-webdav]")
 
-	// Connection tests
 	fmt.Println("\n[Connection Tests]")
 	var remotes []string
 	if hubConfigured {
@@ -433,18 +350,17 @@ func runVerify() {
 		}
 	}
 
-	// Daemon status
 	fmt.Println("\n[Daemon]")
 	status, _ := plat.DaemonStatus()
 	if status == "running" || status == "active" {
-		ok("  autosync: %s", status)
+		ok("  daemon: %s", status)
 	} else {
-		warnf("  autosync: %s", status)
+		warnf("  daemon: %s", status)
 		if runtime.GOOS == "windows" {
 			fmt.Fprintln(os.Stderr, "    Hint: Run register-daemon.bat as administrator")
 			fmt.Fprintf(os.Stderr, "    Location: %s\n", filepath.Join(plat.AutosyncBinDir(), "register-daemon.bat"))
 		} else {
-			fmt.Fprintln(os.Stderr, "    Hint: Run 'e2ee-sync-setup setup' to register the daemon")
+			fmt.Fprintln(os.Stderr, "    Hint: Run 'e2ee-sync setup' to register the daemon")
 		}
 		allOk = false
 	}
@@ -465,8 +381,8 @@ func runUninstall() {
 
 	fmt.Print("\n=== Uninstall E2EE File Sync ===\n\n")
 	fmt.Println("This will:")
-	fmt.Println("  - Stop and unregister the autosync daemon")
-	fmt.Println("  - Remove autosync binary and configuration")
+	fmt.Println("  - Stop and unregister the daemon")
+	fmt.Println("  - Remove e2ee-sync binary and configuration")
 	fmt.Println("  - NOT remove rclone.conf (may contain other remotes)")
 	fmt.Println("  - NOT remove ~/sync directory")
 	fmt.Println()
@@ -480,7 +396,6 @@ func runUninstall() {
 		return
 	}
 
-	// Stop daemon
 	fmt.Println("Stopping daemon...")
 	if err := plat.UnregisterDaemon(); err != nil {
 		warnf("Daemon removal: %v", err)
@@ -488,15 +403,13 @@ func runUninstall() {
 		ok("Daemon removed")
 	}
 
-	// Remove autosync binary
-	binPath := filepath.Join(plat.AutosyncBinDir(), autosyncBinaryName())
+	binPath := filepath.Join(plat.AutosyncBinDir(), binaryName())
 	if err := os.Remove(binPath); err != nil && !os.IsNotExist(err) {
 		warnf("Remove binary: %v", err)
 	} else {
 		ok("Binary removed: %s", binPath)
 	}
 
-	// Remove autosync config
 	configDir := plat.AutosyncConfigDir()
 	if err := os.RemoveAll(configDir); err != nil {
 		warnf("Remove config dir: %v", err)
@@ -511,14 +424,12 @@ func runUninstall() {
 // --- Helpers ---
 
 func checkHubReachability() error {
-	// Try to reach e2ee-sync-hub via tailscale ping (faster than rclone lsd, works without rclone.conf)
 	cmd := exec.Command("tailscale", "ping", "--c", "1", "--timeout", "5s", "e2ee-sync-hub")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintln(os.Stderr)
 		warnf("Cannot reach e2ee-sync-hub via Tailscale")
-		// Show tailscale status for diagnostics
 		fmt.Fprintln(os.Stderr, "\n  Tailscale status:")
 		statusCmd := exec.Command("tailscale", "status")
 		statusCmd.Stdout = os.Stderr
@@ -534,9 +445,6 @@ func checkHubReachability() error {
 	return nil
 }
 
-// createRcloneRemotes uses "rclone config create" to set up all remotes.
-// This lets rclone handle password obscuring internally, avoiding
-// command-line argument mangling and base64 auto-detection issues.
 func createRcloneRemotes(rc *rclone.Client, creds *credential.Credentials, useHub bool) error {
 	if useHub {
 		if err := rc.ConfigCreate("hub-webdav", "webdav",
@@ -601,8 +509,6 @@ func backupRcloneConf(confPath string) {
 	fmt.Printf("  Backed up to: %s\n", backupPath)
 }
 
-// connectionError wraps a connection test failure with the stderr output
-// so callers can inspect the failure reason (e.g. 401 Unauthorized).
 type connectionError struct {
 	err    error
 	stderr string
@@ -655,84 +561,43 @@ func retryResync(rc *rclone.Client, syncDir, remote string) error {
 	return lastErr
 }
 
-func deployAutosync(plat platform.Platform) (string, error) {
+// deploySelf copies the current executable to the platform's bin directory.
+func deploySelf(plat platform.Platform) (string, error) {
 	binDir := plat.AutosyncBinDir()
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		return "", fmt.Errorf("create bin dir: %w", err)
 	}
-	dstPath := filepath.Join(binDir, autosyncBinaryName())
-	if err := deployAutosyncTo(dstPath); err != nil {
-		return "", err
+	dstPath := filepath.Join(binDir, binaryName())
+
+	selfPath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine own path: %w", err)
+	}
+	selfPath, err = filepath.EvalSymlinks(selfPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve symlink: %w", err)
+	}
+
+	// Skip if already in the target location
+	if filepath.Clean(selfPath) == filepath.Clean(dstPath) {
+		return dstPath, nil
+	}
+
+	data, err := os.ReadFile(selfPath)
+	if err != nil {
+		return "", fmt.Errorf("read self: %w", err)
+	}
+	if err := os.WriteFile(dstPath, data, 0755); err != nil {
+		return "", fmt.Errorf("write binary: %w", err)
 	}
 	return dstPath, nil
 }
 
-func deployAutosyncTo(dstPath string) error {
-	setupBin, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("cannot determine setup binary path: %w", err)
-	}
-	setupDir := filepath.Dir(setupBin)
-
-	srcName := fmt.Sprintf("autosync-%s-%s", goosToLabel(runtime.GOOS), goarchToLabel(runtime.GOARCH))
+func binaryName() string {
 	if runtime.GOOS == "windows" {
-		srcName += ".exe"
+		return "e2ee-sync.exe"
 	}
-	srcPath := filepath.Join(setupDir, srcName)
-
-	if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-		// Also try the simple name
-		simpleName := "autosync"
-		if runtime.GOOS == "windows" {
-			simpleName += ".exe"
-		}
-		srcPath = filepath.Join(setupDir, simpleName)
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			return fmt.Errorf("autosync binary not found.\n"+
-				"  Download both e2ee-sync-setup and autosync from GitHub Releases\n"+
-				"  and place them in the same directory.\n"+
-				"  https://github.com/yuki0ueda/e2ee-sync/releases\n"+
-				"  Looked in: %s", setupDir)
-		}
-	}
-
-	data, err := os.ReadFile(srcPath)
-	if err != nil {
-		return fmt.Errorf("read autosync binary: %w", err)
-	}
-	if err := os.WriteFile(dstPath, data, 0755); err != nil {
-		return fmt.Errorf("write autosync binary: %w", err)
-	}
-	return nil
-}
-
-func autosyncBinaryName() string {
-	if runtime.GOOS == "windows" {
-		return "autosync.exe"
-	}
-	return "autosync"
-}
-
-func goosToLabel(goos string) string {
-	switch goos {
-	case "windows":
-		return "win"
-	case "darwin":
-		return "mac"
-	default:
-		return goos
-	}
-}
-
-func goarchToLabel(goarch string) string {
-	switch goarch {
-	case "amd64":
-		return "x64"
-	case "arm64":
-		return "arm64"
-	default:
-		return goarch
-	}
+	return "e2ee-sync"
 }
 
 func step(n, total int, msg string) {

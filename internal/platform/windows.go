@@ -84,14 +84,14 @@ func (p *windowsPlatform) registerBatPath() string {
 func (p *windowsPlatform) RegisterDaemon(binPath, configPath string) error {
 	batContent := fmt.Sprintf("@echo off\r\n"+
 		"echo Registering E2EE-Autosync daemon...\r\n"+
-		"schtasks /Create /TN \"E2EE-Autosync\" /TR \"\\\"%s\\\" --config \\\"%s\\\"\" /SC ONLOGON /F\r\n"+
+		"schtasks /Create /TN \"E2EE-Autosync\" /TR \"\\\"%s\\\" daemon --config \\\"%s\\\"\" /SC ONLOGON /F\r\n"+
 		"if %%errorlevel%% neq 0 (\r\n"+
 		"    echo Failed. Please run this file as administrator.\r\n"+
 		"    pause\r\n"+
 		"    exit /b 1\r\n"+
 		")\r\n"+
 		"schtasks /Run /TN \"E2EE-Autosync\"\r\n"+
-		"echo Done. Autosync will start at every logon.\r\n"+
+		"echo Done. e2ee-sync daemon will start at every logon.\r\n"+
 		"pause\r\n",
 		binPath, configPath)
 

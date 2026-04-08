@@ -8,5 +8,9 @@ var (
 )
 
 func String() string {
-	return fmt.Sprintf("v%s (%s)", Version, Commit)
+	v := Version
+	if len(v) > 0 && v[0] != 'v' {
+		v = "v" + v
+	}
+	return fmt.Sprintf("%s (%s)", v, Commit)
 }

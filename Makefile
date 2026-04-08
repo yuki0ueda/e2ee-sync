@@ -10,8 +10,7 @@ PLATFORMS = linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 wind
 
 # Build for current OS/arch
 build:
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/e2ee-sync-setup ./cmd/setup
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/autosync ./cmd/autosync
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/e2ee-sync ./cmd/e2ee-sync
 
 # Cross-compile all targets
 build-all:
@@ -27,12 +26,7 @@ build-all:
 		echo "Building $$GOOS/$$GOARCH..."; \
 		CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH \
 			go build -ldflags "$(LDFLAGS)" \
-			-o dist/e2ee-sync-setup-$$os_label-$$arch$$ext ./cmd/setup; \
-		autosync_ldflags="$(LDFLAGS)"; \
-		if [ "$$GOOS" = "windows" ]; then autosync_ldflags="$(LDFLAGS) -H windowsgui"; fi; \
-		CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH \
-			go build -ldflags "$$autosync_ldflags" \
-			-o dist/autosync-$$os_label-$$arch$$ext ./cmd/autosync; \
+			-o dist/e2ee-sync-$$os_label-$$arch$$ext ./cmd/e2ee-sync; \
 	done
 
 test:
