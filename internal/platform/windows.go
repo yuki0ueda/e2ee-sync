@@ -7,10 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
-	"unsafe"
 )
 
 type windowsPlatform struct {
@@ -128,21 +125,4 @@ func (p *windowsPlatform) DaemonStatus() (string, error) {
 		return "running", nil
 	}
 	return "stopped", nil
-}
-
-// IsLaunchedFromExplorer detects if the process was started by double-clicking
-// in Windows Explorer (parent process is explorer.exe).
-func IsLaunchedFromExplorer() bool {
-	if runtime.GOOS != "windows" {
-		return false
-	}
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	procGetConsoleProcessList := kernel32.NewProc("GetConsoleProcessList")
-	pids := make([]uint32, 2)
-	ret, _, _ := procGetConsoleProcessList.Call(
-		uintptr(unsafe.Pointer(&pids[0])),
-		uintptr(len(pids)),
-	)
-	// If only 1 process attached to console, it was likely double-clicked
-	return ret == 1
 }

@@ -99,7 +99,7 @@ func onReady(cfg *Config, syncer *Syncer) {
 	mSyncNow := systray.AddMenuItem("Sync Now", "Trigger immediate sync")
 	mPause := systray.AddMenuItem("Pause", "Pause/resume auto-sync")
 	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("Quit", "Stop autosync")
+	mQuit := systray.AddMenuItem("Quit", "Stop e2ee-sync")
 
 	quitCh := make(chan struct{})
 	syncNowCh := make(chan struct{}, 1)

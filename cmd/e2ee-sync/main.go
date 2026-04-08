@@ -57,14 +57,16 @@ Commands:
 
 func interactiveMenu() {
 	fmt.Printf("\n=== E2EE File Sync %s ===\n\n", version.String())
-	fmt.Println("  1) Setup    — First-time device setup")
-	fmt.Println("  2) Share    — Share config to add a new device")
-	fmt.Println("  3) Join     — Join from another device's share")
-	fmt.Println("  4) Verify   — Check configuration and connectivity")
-	fmt.Println("  5) Quit")
+	fmt.Println("  1) Setup     — First-time device setup")
+	fmt.Println("  2) Share     — Share config to add a new device")
+	fmt.Println("  3) Join      — Join from another device's share")
+	fmt.Println("  4) Verify    — Check configuration and connectivity")
+	fmt.Println("  5) Upgrade   — Update to newer version")
+	fmt.Println("  6) Uninstall — Remove daemon and configuration")
+	fmt.Println("  7) Quit")
 	fmt.Println()
 
-	choice, err := credential.ReadLine("Select [1-5]: ")
+	choice, err := credential.ReadLine("Select [1-7]: ")
 	if err != nil {
 		fatalf("Failed to read input: %v", err)
 	}
@@ -79,6 +81,10 @@ func interactiveMenu() {
 	case "4":
 		runVerify()
 	case "5":
+		runUpgrade()
+	case "6":
+		runUninstall()
+	case "7":
 		return
 	default:
 		fmt.Fprintln(os.Stderr, "Invalid selection.")
