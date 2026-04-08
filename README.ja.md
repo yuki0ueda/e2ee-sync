@@ -4,58 +4,52 @@
 
 エンドツーエンド暗号化ファイル同期のセットアップツール。
 
-[rclone](https://rclone.org/) bisync によるクライアントサイド暗号化同期を複数デバイス間で構成します。[Tailscale](https://tailscale.com/) によるセキュアな接続と、Cloudflare R2 によるクラウドフォールバックを組み合わせたアーキテクチャです。
+[rclone](https://rclone.org/) bisync によるクライアントサイド暗号化同期を複数デバイス間で構成します。[Tailscale](https://tailscale.com/) によるセキュアな接続と、S3互換クラウドストレージをバックエンドに使用します。
+
+対応バックエンド: Cloudflare R2, AWS S3, Backblaze B2, その他S3互換サービス
 
 ## アーキテクチャ
 
 ```
-                      ┌──────────────────────────────┐
-デバイスA ──┐          │  e2ee-sync-hub（オプション）   │
-             ├─ Tailscale ─┤  WebDAV + R2 バックアップ     │
-デバイスB ──┘          └──────────────────────────────┘
-  │                              │
-  │  R2 直接（hub停止時          │  定期 sync
-  │  またはhubなし構成）         │
-  ▼                              ▼
-┌──────────────────────────────────┐
-│  Cloudflare R2（暗号化 blob）     │
-└──────────────────────────────────┘
+                         ┌──────────────────────────────────┐
+デバイスA ──┐             │  e2ee-sync-hub（オプション）       │
+             ├─ Tailscale ─┤  WebDAV 中継 + クラウドバックアップ │
+デバイスB ──┘             └──────────────────────────────────┘
+  │                                    │
+  │  クラウド直接（hub停止時           │  定期 sync
+  │  またはhubなし構成）               │
+  ▼                                    ▼
+┌──────────────────────────────────────────┐
+│  S3互換ストレージ（暗号化 blob）          │
+│  例: Cloudflare R2, AWS S3, B2           │
+└──────────────────────────────────────────┘
 ```
 
-- **hubあり**: Tailscale経由の高速直接同期 + hubがR2バックアップ担当 + ZFSスナップショットで世代管理
-- **hubなし**: デバイスがCloudflare R2に直接同期 — 低速だが完全に動作
+- **hubあり**: Tailscale経由の高速直接同期 + hubがクラウドバックアップ担当 + ZFSスナップショットで世代管理
+- **hubなし**: デバイスがクラウドストレージに直接同期 — 低速だが完全に動作
 - **暗号化**: rclone crypt（ファイル名・ディレクトリ名暗号化、クライアント側のみ）
 
 ## 同期ディレクトリ
 
-`~/sync`（Windows: `%USERPROFILE%\sync`）内のファイルが全デバイス間で双方向同期されます。ファイルはデバイス上で暗号化されてから送信され、hub や R2 には暗号化 blob のみが保存されます。除外パターン（`.DS_Store`, `*.tmp`, `node_modules/` 等）は `filter-rules.txt` で設定できます。
+`~/sync`（Windows: `%USERPROFILE%\sync`）内のファイルが全デバイス間で双方向同期されます。ファイルはデバイス上で暗号化されてから送信され、hub やクラウドストレージには暗号化 blob のみが保存されます。除外パターン（`.DS_Store`, `*.tmp`, `node_modules/` 等）は `filter-rules.txt` で設定できます。
 
 ## 前提条件
 
 - [rclone](https://rclone.org/install/) 1.71.0+ がインストール済みでPATHに存在すること
 - [Tailscale](https://tailscale.com/download) がインストール済みでtailnetに接続済みであること
-- Cloudflare R2 バケット（必須）
+- S3互換ストレージのバケット（Cloudflare R2, AWS S3, Backblaze B2 等）
 - Tailscale経由で `e2ee-sync-hub` に到達可能であること（オプション — 高速直接同期を有効化）
 
 ## はじめに
 
-### 1. Cloudflare R2 のセットアップ
+### 1. クラウドストレージのセットアップ
 
-Cloudflare Dashboard でバケットと API トークンを作成します。
+利用するプロバイダーでバケットと S3 API クレデンシャルを作成します。
 
-**バケット作成**: R2 → Create Bucket
+**例（Cloudflare R2）:**
 
-```
-バケット名: e2ee-sync
-リージョン: Automatic（または APAC）
-```
-
-**API トークン作成**: R2 → Manage R2 API Tokens → Create API Token
-
-```
-権限: Object Read & Write
-バケット指定: e2ee-sync
-```
+1. R2 → Create Bucket → 名前: `e2ee-sync`
+2. R2 → Manage R2 API Tokens → API トークン作成（Object Read & Write）
 
 以下の値を控えておく（デバイスセットアップ時に必要）:
 
@@ -65,7 +59,7 @@ Secret Access Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 S3 エンドポイント URL: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 ```
 
-エンドポイントは R2 → Overview → S3 API で確認できます。管轄区域固有のエンドポイントがある場合はそちらを使用してください。
+他のプロバイダー（AWS S3, Backblaze B2 等）でも同様に Access Key, Secret Key, エンドポイント/リージョンが必要です。
 
 ### 2. パスワードの準備
 
@@ -92,11 +86,11 @@ cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32; echo
 
 ### 3.（オプション）Hub セットアップ
 
-hub は**必須ではありません** — デバイスは Cloudflare R2 に直接同期できます。ただし、専用の Proxmox LXC hub を設置すると:
+hub は**必須ではありません** — デバイスはクラウドストレージに直接同期できます。ただし、専用の Proxmox LXC hub を設置すると:
 
-- **高速同期** — R2を経由せずTailscale直接接続
+- **高速同期** — クラウドを経由せずTailscale直接接続
 - **ZFS スナップショット** — ポイントインタイムリカバリ
-- **R2 コスト削減** — 各デバイスが個別にR2同期する代わりにhubが一括処理
+- **クラウドAPIコスト削減** — 各デバイスが個別に同期する代わりにhubが一括処理
 
 セットアップ手順は [`hub/README.ja.md`](hub/README.ja.md) を参照。
 

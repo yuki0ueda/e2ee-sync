@@ -4,58 +4,52 @@
 
 End-to-end encrypted file synchronization setup tool.
 
-Automates the configuration of [rclone](https://rclone.org/) bisync with client-side encryption across multiple devices, using [Tailscale](https://tailscale.com/) for secure connectivity and Cloudflare R2 as a cloud fallback.
+Automates the configuration of [rclone](https://rclone.org/) bisync with client-side encryption across multiple devices, using [Tailscale](https://tailscale.com/) for secure connectivity and S3-compatible cloud storage as a backend.
+
+Supported backends: Cloudflare R2, AWS S3, Backblaze B2, and other S3-compatible services.
 
 ## Architecture
 
 ```
-                      ┌──────────────────────────┐
-Device A ──┐          │  e2ee-sync-hub (optional) │
-            ├─ Tailscale ─┤  WebDAV + R2 backup       │
-Device B ──┘          └──────────────────────────┘
-  │                              │
-  │  R2 direct (hub down        │  periodic sync
-  │  or no hub at all)          │
-  ▼                              ▼
-┌──────────────────────────────────┐
-│  Cloudflare R2 (encrypted blob)  │
-└──────────────────────────────────┘
+                         ┌──────────────────────────────────┐
+Device A ──┐             │  e2ee-sync-hub (optional)         │
+            ├─ Tailscale ─┤  WebDAV relay + cloud backup      │
+Device B ──┘             └──────────────────────────────────┘
+  │                                    │
+  │  Cloud direct (hub down            │  periodic sync
+  │  or no hub at all)                 │
+  ▼                                    ▼
+┌──────────────────────────────────────────┐
+│  S3-compatible storage (encrypted blobs)  │
+│  e.g., Cloudflare R2, AWS S3, B2         │
+└──────────────────────────────────────────┘
 ```
 
-- **With hub**: Fast direct sync via Tailscale WebDAV + hub handles R2 backup + ZFS snapshots for versioning
-- **Without hub**: Devices sync directly to Cloudflare R2 — slower but fully functional
+- **With hub**: Fast direct sync via Tailscale WebDAV + hub handles cloud backup + ZFS snapshots for versioning
+- **Without hub**: Devices sync directly to cloud storage — slower but fully functional
 - **Encryption**: rclone crypt with filename and directory name encryption (client-side only)
 
 ## Sync Directory
 
-Files in `~/sync` (Windows: `%USERPROFILE%\sync`) are bidirectionally synced across all your devices. Files are encrypted client-side before leaving the device — the hub and R2 only store encrypted blobs. Exclusion patterns (`.DS_Store`, `*.tmp`, `node_modules/`, etc.) are configured in `filter-rules.txt`.
+Files in `~/sync` (Windows: `%USERPROFILE%\sync`) are bidirectionally synced across all your devices. Files are encrypted client-side before leaving the device — the hub and cloud storage only store encrypted blobs. Exclusion patterns (`.DS_Store`, `*.tmp`, `node_modules/`, etc.) are configured in `filter-rules.txt`.
 
 ## Prerequisites
 
 - [rclone](https://rclone.org/install/) 1.71.0+ installed and in PATH
 - [Tailscale](https://tailscale.com/download) installed and connected to your tailnet
-- Cloudflare R2 bucket (required)
+- S3-compatible storage bucket (Cloudflare R2, AWS S3, Backblaze B2, etc.)
 - `e2ee-sync-hub` reachable via Tailscale (optional — enables fast direct sync)
 
 ## Getting Started
 
-### 1. Cloudflare R2 Setup
+### 1. Cloud Storage Setup
 
-Create a bucket and API token in the Cloudflare Dashboard.
+Create a bucket and S3 API credentials on your chosen provider.
 
-**Create Bucket**: R2 → Create Bucket
+**Example (Cloudflare R2):**
 
-```
-Bucket name: e2ee-sync
-Region: Automatic (or APAC)
-```
-
-**Create API Token**: R2 → Manage R2 API Tokens → Create API Token
-
-```
-Permissions: Object Read & Write
-Bucket: e2ee-sync
-```
+1. R2 → Create Bucket → name: `e2ee-sync`
+2. R2 → Manage R2 API Tokens → Create API Token (Object Read & Write)
 
 Note these values (needed during device setup):
 
@@ -65,7 +59,7 @@ Secret Access Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 S3 Endpoint URL: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 ```
 
-Find your endpoint in R2 → Overview → S3 API. Use the jurisdiction-specific endpoint if applicable.
+Other providers (AWS S3, Backblaze B2, etc.) work similarly — you need an Access Key, Secret Key, and endpoint/region.
 
 ### 2. Prepare Passwords
 
@@ -92,11 +86,11 @@ cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32; echo
 
 ### 3. (Optional) Hub Setup
 
-The hub is **not required** — devices can sync directly via Cloudflare R2. However, a dedicated Proxmox LXC hub provides:
+The hub is **not required** — devices can sync directly via cloud storage. However, a dedicated Proxmox LXC hub provides:
 
-- **Faster sync** via Tailscale direct connection instead of R2 round-trip
+- **Faster sync** via Tailscale direct connection instead of cloud round-trip
 - **ZFS snapshots** for point-in-time recovery
-- **Reduced R2 costs** (hub batches uploads instead of every device syncing individually)
+- **Reduced cloud API costs** (hub batches uploads instead of every device syncing individually)
 
 See [`hub/README.md`](hub/README.md) for the Proxmox LXC setup guide.
 

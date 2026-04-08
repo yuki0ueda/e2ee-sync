@@ -4,8 +4,8 @@
 
 Setup guide for the Proxmox LXC hub — an **optional** component of [e2ee-sync](https://github.com/yuki0ueda/e2ee-sync).
 
-> **The hub is not required.** Devices can sync directly via Cloudflare R2 without a hub.
-> The hub adds fast direct sync via Tailscale, ZFS snapshots, and reduced R2 API costs.
+> **The hub is not required.** Devices can sync directly via cloud storage without a hub.
+> The hub adds fast direct sync via Tailscale, ZFS snapshots, and reduced cloud API costs.
 >
 > **Audience**: Advanced users with Proxmox VE who want a dedicated LXC as the sync hub.
 
@@ -32,7 +32,7 @@ Setup guide for the Proxmox LXC hub — an **optional** component of [e2ee-sync]
          │
          │ sync (encrypted blobs as-is)
          ▼
-[Cloudflare R2]
+[S3-compatible cloud storage]
   └── Encrypted blob storage (offsite backup)
 ```
 
@@ -43,7 +43,7 @@ Setup guide for the Proxmox LXC hub — an **optional** component of [e2ee-sync]
 ──────────────────────────────────────────────────────
 Device                    Yes                 Yes (plaintext)
 Proxmox Hub               No                  No (encrypted blobs)
-Cloudflare R2             No                  No (encrypted blobs)
+Cloud storage             No                  No (encrypted blobs)
 Tailscale                 No                  No (transport only)
 ```
 
@@ -53,7 +53,7 @@ Tailscale                 No                  No (transport only)
 
 Complete these steps from the [main README](../README.md#getting-started) first:
 
-1. **Cloudflare R2 Setup** — create the `e2ee-sync` bucket and API token
+1. **Cloud Storage Setup** — create a bucket and S3 API credentials
 2. **Prepare Passwords** — WebDAV, encryption password, and salt
 
 ## Prerequisites
