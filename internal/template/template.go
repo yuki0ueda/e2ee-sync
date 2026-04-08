@@ -15,9 +15,9 @@ type AutosyncConfigData struct {
 const autosyncConfigTmpl = `sync_dir: {{.SyncDir}}
 {{- if .UseHub}}
 primary_remote: hub-crypt:
-fallback_remote: r2-crypt:
+fallback_remote: cloud-crypt:
 {{- else}}
-primary_remote: r2-crypt:
+primary_remote: cloud-crypt:
 {{- end}}
 rclone_path: rclone
 filter_file: {{.FilterFilePath}}

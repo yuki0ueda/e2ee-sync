@@ -49,12 +49,16 @@ func runSetup() {
 
 	// Step 2: Credential input
 	step(2, 9, "Collecting credentials")
+	backend, err := credential.SelectBackend()
+	if err != nil {
+		fatalf("Backend selection failed: %v", err)
+	}
 	var creds *credential.Credentials
-	creds, err := credential.Collect(useHub)
+	creds, err = credential.Collect(useHub, backend)
 	if err != nil {
 		fatalf("Credential collection failed: %v", err)
 	}
-	ok("Credentials collected")
+	ok("Credentials collected (%s)", backend.Name)
 
 	// Step 3: Generate rclone.conf via rclone config create
 	step(3, 9, "Generating rclone.conf")
@@ -70,7 +74,7 @@ func runSetup() {
 	creds.WebDAVPassword = ""
 	creds.EncryptionPassword = ""
 	creds.EncryptionSalt = ""
-	creds.R2SecretAccessKey = ""
+	creds.S3SecretAccessKey = ""
 	ok("rclone.conf written to %s", confPath)
 
 	// Step 4: Filter rules
@@ -95,7 +99,7 @@ func runSetup() {
 
 	// Step 6: Connection tests (with 401 re-entry loop for hub mode)
 	step(6, 9, "Testing connections")
-	syncRemote := "r2-crypt:"
+	syncRemote := "cloud-crypt:"
 	if useHub {
 		syncRemote = "hub-crypt:"
 	}
@@ -112,14 +116,14 @@ func runSetup() {
 			}{
 				{"hub-webdav", "hub-webdav:"},
 				{"hub-crypt", "hub-crypt:"},
-				{"r2-crypt", "r2-crypt:"},
+				{"cloud-crypt", "cloud-crypt:"},
 			}
 		} else {
 			testRemotes = []struct {
 				name   string
 				remote string
 			}{
-				{"r2-crypt", "r2-crypt:"},
+				{"cloud-crypt", "cloud-crypt:"},
 			}
 		}
 		authFailed := false
@@ -141,7 +145,7 @@ func runSetup() {
 			break
 		}
 		fmt.Printf("\n  Re-enter credentials (attempt %d/%d):\n", authAttempt+2, maxAuthRetries)
-		creds, err = credential.Collect(useHub)
+		creds, err = credential.Collect(useHub, backend)
 		if err != nil {
 			fatalf("Credential collection failed: %v", err)
 		}
@@ -151,7 +155,7 @@ func runSetup() {
 		creds.WebDAVPassword = ""
 		creds.EncryptionPassword = ""
 		creds.EncryptionSalt = ""
-		creds.R2SecretAccessKey = ""
+		creds.S3SecretAccessKey = ""
 		ok("rclone.conf updated")
 	}
 
@@ -337,9 +341,9 @@ func runVerify() {
 	fmt.Println("\n[Connection Tests]")
 	var remotes []string
 	if hubConfigured {
-		remotes = []string{"hub-webdav:", "hub-crypt:", "r2-crypt:"}
+		remotes = []string{"hub-webdav:", "hub-crypt:", "cloud-crypt:"}
 	} else {
-		remotes = []string{"r2-crypt:"}
+		remotes = []string{"cloud-crypt:"}
 	}
 	for _, remote := range remotes {
 		if _, err := rc.ListDir(remote); err != nil {
@@ -466,26 +470,31 @@ func createRcloneRemotes(rc *rclone.Client, creds *credential.Credentials, useHu
 		}
 	}
 
-	endpoint := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", creds.R2AccountID)
-	if err := rc.ConfigCreate("r2-direct", "s3",
-		"provider", "Cloudflare",
-		"access_key_id", creds.R2AccessKeyID,
-		"secret_access_key", creds.R2SecretAccessKey,
-		"endpoint", endpoint,
-		"region", "auto",
+	// S3-compatible remote (works with R2, AWS S3, B2, etc.)
+	s3Params := []string{
+		"provider", creds.Backend.Provider,
+		"access_key_id", creds.S3AccessKeyID,
+		"secret_access_key", creds.S3SecretAccessKey,
 		"acl", "private",
-	); err != nil {
-		return fmt.Errorf("create r2-direct: %w", err)
+	}
+	if creds.S3Endpoint != "" {
+		s3Params = append(s3Params, "endpoint", creds.S3Endpoint)
+	}
+	if creds.S3Region != "" {
+		s3Params = append(s3Params, "region", creds.S3Region)
+	}
+	if err := rc.ConfigCreate("cloud-direct", "s3", s3Params...); err != nil {
+		return fmt.Errorf("create cloud-direct: %w", err)
 	}
 
-	if err := rc.ConfigCreate("r2-crypt", "crypt",
-		"remote", "r2-direct:e2ee-sync",
+	if err := rc.ConfigCreate("cloud-crypt", "crypt",
+		"remote", "cloud-direct:e2ee-sync",
 		"password", creds.EncryptionPassword,
 		"password2", creds.EncryptionSalt,
 		"filename_encryption", "standard",
 		"directory_name_encryption", "true",
 	); err != nil {
-		return fmt.Errorf("create r2-crypt: %w", err)
+		return fmt.Errorf("create cloud-crypt: %w", err)
 	}
 
 	return nil

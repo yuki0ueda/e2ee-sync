@@ -26,10 +26,11 @@ type Status struct {
 }
 
 type Syncer struct {
-	cfg    *Config
-	mu     sync.Mutex
-	status Status
-	paused bool
+	cfg          *Config
+	mu           sync.Mutex
+	status       Status
+	paused       bool
+	firstSync    bool // true until the first successful sync
 
 	// Channels for tray communication
 	StatusCh chan Status
@@ -37,9 +38,10 @@ type Syncer struct {
 
 func NewSyncer(cfg *Config) *Syncer {
 	return &Syncer{
-		cfg:      cfg,
-		status:   Status{State: StateIdle, Message: "Starting..."},
-		StatusCh: make(chan Status, 10),
+		cfg:       cfg,
+		status:    Status{State: StateIdle, Message: "Starting..."},
+		firstSync: true,
+		StatusCh:  make(chan Status, 10),
 	}
 }
 
@@ -85,6 +87,27 @@ func (s *Syncer) RunBisync() bool {
 
 	s.updateStatus(StateSyncing, "Syncing...")
 
+	// Quick reachability check for hub remotes before attempting bisync.
+	// Avoids a 10-minute bisync timeout when hub is down.
+	if s.cfg.FallbackRemote != "" && isHubRemote(s.cfg.PrimaryRemote) {
+		if !s.checkRemoteReachable(s.cfg.PrimaryRemote) {
+			log.Printf("Hub unreachable, skipping to fallback...")
+			if err := s.bisync(s.cfg.FallbackRemote); err == nil {
+				s.updateStatus(StateIdle, "Synced (fallback)")
+				s.mu.Lock()
+				s.status.LastSync = time.Now()
+				s.mu.Unlock()
+				st := s.GetStatus()
+				s.sendStatus(st)
+				return true
+			} else {
+				log.Printf("Fallback sync also failed: %v", err)
+			}
+			s.updateStatus(StateError, "Sync failed")
+			return false
+		}
+	}
+
 	// Try primary remote
 	if err := s.bisync(s.cfg.PrimaryRemote); err == nil {
 		s.updateStatus(StateIdle, "Synced")
@@ -119,19 +142,45 @@ func (s *Syncer) RunBisync() bool {
 	return false
 }
 
+func needsResync(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "must run --resync")
+}
+
+func needsForce(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "all files were changed")
+}
+
 func (s *Syncer) bisync(remote string) error {
 	err := s.runBisyncCmd(remote, false, false)
 	if err == nil {
+		s.mu.Lock()
+		s.firstSync = false
+		s.mu.Unlock()
 		return nil
 	}
-	errMsg := err.Error()
-	if strings.Contains(errMsg, "must run --resync") {
-		log.Printf("Resync required, retrying with --resync...")
-		return s.runBisyncCmd(remote, true, false)
+	if needsResync(err) {
+		s.mu.Lock()
+		isFirst := s.firstSync
+		s.mu.Unlock()
+		if isFirst {
+			// Auto-resync only on first sync after startup (safe: establishing baseline)
+			log.Printf("Resync required (first sync), retrying with --resync...")
+			err2 := s.runBisyncCmd(remote, true, false)
+			if err2 == nil {
+				s.mu.Lock()
+				s.firstSync = false
+				s.mu.Unlock()
+			}
+			return err2
+		}
+		log.Printf("WARNING: Resync required but auto-resync disabled after first sync. Run 'rclone bisync --resync' manually.")
+		return err
 	}
-	if strings.Contains(errMsg, "all files were changed") {
-		log.Printf("Safety abort detected, retrying with --force...")
-		return s.runBisyncCmd(remote, false, true)
+	if needsForce(err) {
+		// Never auto-force. Log warning and let user decide.
+		log.Printf("WARNING: Safety abort — all files changed on one side. Manual intervention required.")
+		log.Printf("WARNING: Run 'rclone bisync %s %s --force' if you are sure this is correct.", s.cfg.SyncDir, remote)
+		return err
 	}
 	return err
 }
@@ -159,6 +208,19 @@ func (s *Syncer) runBisyncCmd(remote string, resync bool, force bool) error {
 		return fmt.Errorf("%s: %s", err, stderr.String())
 	}
 	return nil
+}
+
+func isHubRemote(remote string) bool {
+	return strings.HasPrefix(remote, "hub-")
+}
+
+// checkRemoteReachable does a quick lsd with 5-second timeout to check if a remote is reachable.
+func (s *Syncer) checkRemoteReachable(remote string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, s.cfg.RclonePath, "lsd", remote)
+	hideChildWindow(cmd)
+	return cmd.Run() == nil
 }
 
 func (s *Syncer) updateStatus(state SyncState, msg string) {
