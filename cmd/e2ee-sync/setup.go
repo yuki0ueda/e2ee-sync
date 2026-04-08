@@ -419,25 +419,53 @@ func runUninstall() {
 		return
 	}
 
-	fmt.Println("Stopping daemon...")
-	if err := plat.UnregisterDaemon(); err != nil {
-		warnf("Daemon removal: %v", err)
+	if runtime.GOOS == "windows" {
+		// On Windows, daemon removal requires admin (same as registration)
+		fmt.Println("Generating unregister-daemon.bat...")
+		if err := plat.UnregisterDaemon(); err != nil {
+			warnf("Failed: %v", err)
+		} else {
+			batPath := filepath.Join(plat.BinDir(), "unregister-daemon.bat")
+			ok("unregister-daemon.bat created")
+			fmt.Println()
+			fmt.Println("  *** ACTION REQUIRED ***")
+			fmt.Println("  Right-click unregister-daemon.bat → Run as administrator")
+			fmt.Printf("  Location: %s\n", batPath)
+		}
+		// Remove config dir (doesn't need admin)
+		configDir := plat.ConfigDir()
+		if err := os.RemoveAll(configDir); err != nil {
+			warnf("Remove config dir: %v", err)
+		} else {
+			ok("Config removed: %s", configDir)
+		}
+		// Also try removing legacy config dir
+		legacyDir := filepath.Join(os.Getenv("USERPROFILE"), ".config", "autosync")
+		if _, err := os.Stat(legacyDir); err == nil {
+			os.RemoveAll(legacyDir)
+			ok("Legacy config removed: %s", legacyDir)
+		}
 	} else {
-		ok("Daemon removed")
-	}
+		fmt.Println("Stopping daemon...")
+		if err := plat.UnregisterDaemon(); err != nil {
+			warnf("Daemon removal: %v", err)
+		} else {
+			ok("Daemon removed")
+		}
 
-	binPath := filepath.Join(plat.BinDir(), binaryName())
-	if err := os.Remove(binPath); err != nil && !os.IsNotExist(err) {
-		warnf("Remove binary: %v", err)
-	} else {
-		ok("Binary removed: %s", binPath)
-	}
+		binPath := filepath.Join(plat.BinDir(), binaryName())
+		if err := os.Remove(binPath); err != nil && !os.IsNotExist(err) {
+			warnf("Remove binary: %v", err)
+		} else {
+			ok("Binary removed: %s", binPath)
+		}
 
-	configDir := plat.ConfigDir()
-	if err := os.RemoveAll(configDir); err != nil {
-		warnf("Remove config dir: %v", err)
-	} else {
-		ok("Config removed: %s", configDir)
+		configDir := plat.ConfigDir()
+		if err := os.RemoveAll(configDir); err != nil {
+			warnf("Remove config dir: %v", err)
+		} else {
+			ok("Config removed: %s", configDir)
+		}
 	}
 
 	fmt.Println("\nUninstall complete.")
