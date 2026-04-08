@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -86,7 +87,14 @@ func runJoin() {
 		fatalf("tailscale not available: %v", err)
 	}
 	if payload.UseHub {
-		if err := checkHubReachability(); err != nil {
+		hubHost := payload.HubEndpoint
+		if hubHost == "" {
+			hubHost = "e2ee-sync-hub:8080"
+		}
+		if idx := strings.Index(hubHost, ":"); idx != -1 {
+			hubHost = hubHost[:idx]
+		}
+		if err := checkHubReachability(hubHost); err != nil {
 			warnf("Hub not reachable, will use cloud fallback")
 		}
 	}
@@ -114,7 +122,11 @@ func runJoin() {
 			Provider: payload.BackendProvider,
 		},
 	}
-	if err := createRcloneRemotes(rc, creds, payload.UseHub); err != nil {
+	hubEndpoint := payload.HubEndpoint
+	if hubEndpoint == "" {
+		hubEndpoint = "e2ee-sync-hub:8080"
+	}
+	if err := createRcloneRemotes(rc, creds, payload.UseHub, hubEndpoint); err != nil {
 		fatalf("Failed to create rclone remotes: %v", err)
 	}
 	creds.EncryptionPassword = ""

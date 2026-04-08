@@ -23,6 +23,7 @@ import (
 // TransferPayload is the config data sent from an existing device to a new one.
 type TransferPayload struct {
 	UseHub            bool   `json:"use_hub"`
+	HubEndpoint       string `json:"hub_endpoint,omitempty"`
 	BackendProvider   string `json:"backend_provider"`
 	BackendName       string `json:"backend_name"`
 	S3AccessKeyID     string `json:"s3_access_key_id"`
@@ -177,6 +178,14 @@ func extractPayload(plat platform.Platform, rc *rclone.Client) (*TransferPayload
 		payload.BackendName = "Backblaze B2"
 	default:
 		payload.BackendName = "S3-compatible"
+	}
+
+	// Extract hub endpoint if hub mode
+	if payload.UseHub {
+		hubShow, err := rc.ConfigShow("hub-webdav")
+		if err == nil {
+			payload.HubEndpoint = strings.TrimPrefix(hubShow["url"], "http://")
+		}
 	}
 
 	// Extract encryption credentials

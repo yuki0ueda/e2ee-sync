@@ -26,6 +26,7 @@ filter_file: {{.FilterFilePath}}
 debounce_sec: 5
 poll_interval_sec: 300
 trash_retain_days: 30
+hub_timeout_sec: 5
 `
 
 // RenderAutosyncConfig generates the autosync config.json content.

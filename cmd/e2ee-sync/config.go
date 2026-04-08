@@ -18,6 +18,7 @@ type Config struct {
 	DebounceSec     int
 	PollIntervalSec int
 	TrashRetainDays int // auto-cleanup after this many days (default 30)
+	HubTimeoutSec   int // timeout for hub reachability check (default 5)
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -62,6 +63,13 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if cfg.TrashRetainDays <= 0 {
 		cfg.TrashRetainDays = 30
+	}
+
+	if v, ok := kv["hub_timeout_sec"]; ok {
+		cfg.HubTimeoutSec, _ = strconv.Atoi(v)
+	}
+	if cfg.HubTimeoutSec <= 0 {
+		cfg.HubTimeoutSec = 5
 	}
 
 	if v, ok := kv["debounce_sec"]; ok {

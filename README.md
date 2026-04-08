@@ -41,10 +41,20 @@ When files are deleted or overwritten during sync, the previous version is autom
 
 ## Prerequisites
 
-- [rclone](https://rclone.org/install/) 1.71.0+ installed and in PATH
-- [Tailscale](https://tailscale.com/download) installed and connected to your tailnet
-- S3-compatible storage bucket (Cloudflare R2, AWS S3, Backblaze B2, etc.)
-- `e2ee-sync-hub` reachable via Tailscale (optional — enables fast direct sync)
+Install these before running e2ee-sync:
+
+1. **[rclone](https://rclone.org/install/)** 1.71.0+ — file sync engine
+   - Windows: `winget install Rclone.Rclone` or [download](https://rclone.org/downloads/)
+   - macOS: `brew install rclone`
+   - Linux: `sudo apt install rclone` or `curl https://rclone.org/install.sh | sudo bash`
+
+2. **[Tailscale](https://tailscale.com/download)** — secure device networking
+   - Install from [tailscale.com/download](https://tailscale.com/download) and sign in
+
+3. **S3-compatible storage** — Cloudflare R2, AWS S3, Backblaze B2, etc.
+   - Create a bucket and API credentials (see Getting Started below)
+
+4. *(Optional)* **e2ee-sync-hub** — dedicated relay server for faster sync
 
 ## Getting Started
 

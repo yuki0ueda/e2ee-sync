@@ -250,9 +250,10 @@ func isHubRemote(remote string) bool {
 	return strings.HasPrefix(remote, "hub-")
 }
 
-// checkRemoteReachable does a quick lsd with 5-second timeout to check if a remote is reachable.
+// checkRemoteReachable does a quick lsd to check if a remote is reachable.
 func (s *Syncer) checkRemoteReachable(remote string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	timeout := time.Duration(s.cfg.HubTimeoutSec) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, s.cfg.RclonePath, "lsd", remote)
 	hideChildWindow(cmd)

@@ -41,10 +41,20 @@
 
 ## 前提条件
 
-- [rclone](https://rclone.org/install/) 1.71.0+ がインストール済みでPATHに存在すること
-- [Tailscale](https://tailscale.com/download) がインストール済みでtailnetに接続済みであること
-- S3互換ストレージのバケット（Cloudflare R2, AWS S3, Backblaze B2 等）
-- Tailscale経由で `e2ee-sync-hub` に到達可能であること（オプション — 高速直接同期を有効化）
+e2ee-sync を実行する前にインストールしてください:
+
+1. **[rclone](https://rclone.org/install/)** 1.71.0+ — ファイル同期エンジン
+   - Windows: `winget install Rclone.Rclone` または [ダウンロード](https://rclone.org/downloads/)
+   - macOS: `brew install rclone`
+   - Linux: `sudo apt install rclone` または `curl https://rclone.org/install.sh | sudo bash`
+
+2. **[Tailscale](https://tailscale.com/download)** — セキュアなデバイス間ネットワーク
+   - [tailscale.com/download](https://tailscale.com/download) からインストールしてサインイン
+
+3. **S3互換ストレージ** — Cloudflare R2, AWS S3, Backblaze B2 等
+   - バケットと API クレデンシャルを作成（下記「はじめに」参照）
+
+4. *（オプション）* **e2ee-sync-hub** — 高速同期用の中継サーバー
 
 ## はじめに
 

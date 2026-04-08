@@ -35,17 +35,28 @@ func runSetup() {
 		fatalf("tailscale not available: %v", err)
 	}
 
-	fmt.Println("  e2ee-sync-hub is an optional relay server (Proxmox LXC).")
-	fmt.Println("  It enables faster sync via Tailscale direct connection.")
-	fmt.Println("  If you haven't set up a hub, select N.")
-	useHub, _ := credential.Confirm("Do you have an e2ee-sync-hub?")
+	fmt.Println()
+	fmt.Println("  Do you have your own always-on server running e2ee-sync-hub?")
+	fmt.Println("  This is an advanced option for faster sync via a dedicated relay.")
+	fmt.Println("  If unsure, select N — your files will sync directly via cloud storage.")
+	useHub, _ := credential.Confirm("Use a hub server?")
+	var hubEndpoint string
 	if useHub {
-		if err := checkHubReachability(); err != nil {
+		hubEndpoint, _ = credential.ReadLine("  Hub address [e2ee-sync-hub:8080]: ")
+		if hubEndpoint == "" {
+			hubEndpoint = "e2ee-sync-hub:8080"
+		}
+		// Extract hostname for ping test
+		hubHost := hubEndpoint
+		if idx := strings.Index(hubHost, ":"); idx != -1 {
+			hubHost = hubHost[:idx]
+		}
+		if err := checkHubReachability(hubHost); err != nil {
 			fatalf("%v", err)
 		}
-		ok("Prerequisites OK (hub mode: sync via hub + cloud fallback)")
+		ok("Prerequisites OK (hub mode)")
 	} else {
-		ok("Prerequisites OK (direct mode: sync via cloud storage)")
+		ok("Prerequisites OK (direct mode)")
 	}
 
 	// Step 2: Credential input
@@ -69,7 +80,7 @@ func runSetup() {
 	}
 	confPath := filepath.Join(configDir, "rclone.conf")
 	backupRcloneConf(confPath)
-	if err := createRcloneRemotes(rc, creds, useHub); err != nil {
+	if err := createRcloneRemotes(rc, creds, useHub, hubEndpoint); err != nil {
 		clearCreds(creds)
 		fatalf("Failed to create rclone remotes: %v", err)
 	}
@@ -152,7 +163,7 @@ func runSetup() {
 		if err != nil {
 			fatalf("Credential collection failed: %v", err)
 		}
-		if err := createRcloneRemotes(rc, creds, useHub); err != nil {
+		if err := createRcloneRemotes(rc, creds, useHub, hubEndpoint); err != nil {
 			clearCreds(creds)
 			fatalf("Failed to update rclone remotes: %v", err)
 		}
@@ -160,13 +171,14 @@ func runSetup() {
 		ok("rclone.conf updated")
 	}
 
-	// Step 7: Initial resync
-	step(7, 9, "Running initial bisync (resync)")
+	// Step 7: Initial sync with cloud
+	step(7, 9, "Syncing files with cloud storage")
+	fmt.Println("  This may take a while depending on the number of files...")
 	if err := retryResync(rc, syncDir, syncRemote); err != nil {
-		warnf("Initial resync failed: %v", err)
-		warnf("You can run manually: rclone bisync %s %s --resync", syncDir, syncRemote)
+		warnf("Initial sync failed: %v", err)
+		warnf("You can retry manually: rclone bisync %s %s --resync --checksum", syncDir, syncRemote)
 	} else {
-		ok("Initial resync completed")
+		ok("Initial sync completed")
 	}
 
 	// Step 8: Deploy binary + config
@@ -221,18 +233,18 @@ func runSetup() {
 	}
 
 	// Summary
+	logPath := filepath.Join(autosyncConfigDir, "autosync.log")
 	fmt.Println()
 	fmt.Println("=== Setup Complete ===")
 	fmt.Println()
 	fmt.Printf("  Sync directory:  %s\n", syncDir)
-	fmt.Printf("  rclone.conf:     %s\n", confPath)
-	fmt.Printf("  Filter rules:    %s\n", filterPath)
+	fmt.Printf("  Deleted files:   %s\n", trashDir)
+	fmt.Printf("  Filter rules:    %s (edit to customize exclusions)\n", filterPath)
+	fmt.Printf("  Daemon log:      %s\n", logPath)
 	fmt.Printf("  Config:          %s\n", autosyncConfigPath)
-	if binDst != "" {
-		fmt.Printf("  Binary:          %s\n", binDst)
-	}
 	fmt.Println()
-	fmt.Println("Your files in ~/sync will now be synchronized automatically.")
+	fmt.Printf("Files in %s will be synced across all your devices.\n", syncDir)
+	fmt.Println("Deleted files are kept in .trash/ for 30 days.")
 }
 
 // --- Upgrade ---
@@ -434,13 +446,13 @@ func runUninstall() {
 
 // --- Helpers ---
 
-func checkHubReachability() error {
-	cmd := exec.Command("tailscale", "ping", "--c", "1", "--timeout", "5s", "e2ee-sync-hub")
+func checkHubReachability(host string) error {
+	cmd := exec.Command("tailscale", "ping", "--c", "1", "--timeout", "5s", host)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintln(os.Stderr)
-		warnf("Cannot reach e2ee-sync-hub via Tailscale")
+		warnf("Cannot reach %s via Tailscale", host)
 		fmt.Fprintln(os.Stderr, "\n  Tailscale status:")
 		statusCmd := exec.Command("tailscale", "status")
 		statusCmd.Stdout = os.Stderr
@@ -448,18 +460,19 @@ func checkHubReachability() error {
 		_ = statusCmd.Run()
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "  Possible causes:")
-		fmt.Fprintln(os.Stderr, "    - e2ee-sync-hub is offline or not connected to tailnet")
-		fmt.Fprintln(os.Stderr, "    - The hostname 'e2ee-sync-hub' is not in your tailnet")
+		fmt.Fprintf(os.Stderr, "    - %s is offline or not connected to tailnet\n", host)
+		fmt.Fprintf(os.Stderr, "    - The hostname '%s' is not in your tailnet\n", host)
 		fmt.Fprintln(os.Stderr, "    - Tailscale ACLs are blocking the connection")
-		return fmt.Errorf("e2ee-sync-hub not reachable")
+		fmt.Fprintln(os.Stderr, "    Check: https://login.tailscale.com/admin/machines")
+		return fmt.Errorf("%s not reachable", host)
 	}
 	return nil
 }
 
-func createRcloneRemotes(rc *rclone.Client, creds *credential.Credentials, useHub bool) error {
+func createRcloneRemotes(rc *rclone.Client, creds *credential.Credentials, useHub bool, hubEndpoint string) error {
 	if useHub {
 		if err := rc.ConfigCreate("hub-webdav", "webdav",
-			"url", "http://e2ee-sync-hub:8080",
+			"url", fmt.Sprintf("http://%s", hubEndpoint),
 			"vendor", "other",
 			"user", "rclone",
 			"pass", creds.WebDAVPassword,
