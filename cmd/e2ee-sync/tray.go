@@ -97,7 +97,7 @@ func onReady(cfg *Config, syncer *Syncer) {
 	mLastSync.Disable()
 	systray.AddSeparator()
 	mSyncNow := systray.AddMenuItem("Sync Now", "Trigger immediate sync")
-	mPause := systray.AddMenuItem("Pause", "Pause/resume auto-sync")
+	mPause := systray.AddMenuItem("Pause", "Pause/resume sync")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "Stop e2ee-sync")
 
