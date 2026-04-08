@@ -9,10 +9,12 @@ import (
 type AutosyncConfigData struct {
 	UseHub         bool
 	SyncDir        string
+	TrashDir       string
 	FilterFilePath string
 }
 
 const autosyncConfigTmpl = `sync_dir: {{.SyncDir}}
+trash_dir: {{.TrashDir}}
 {{- if .UseHub}}
 primary_remote: hub-crypt:
 fallback_remote: cloud-crypt:
@@ -23,6 +25,7 @@ rclone_path: rclone
 filter_file: {{.FilterFilePath}}
 debounce_sec: 5
 poll_interval_sec: 300
+trash_retain_days: 30
 `
 
 // RenderAutosyncConfig generates the autosync config.json content.
@@ -55,5 +58,7 @@ func FilterRules() string {
 - *.swo
 # Exclude rclone internal files
 - .rclone-test
+# Exclude e2ee-sync trash (backup of deleted/overwritten files)
+- .trash/**
 `
 }

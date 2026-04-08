@@ -10,12 +10,14 @@ import (
 
 type Config struct {
 	SyncDir         string
+	TrashDir        string // backup dir for deleted/overwritten files
 	PrimaryRemote   string
 	FallbackRemote  string // empty if no hub
 	RclonePath      string
 	FilterFile      string
 	DebounceSec     int
 	PollIntervalSec int
+	TrashRetainDays int // auto-cleanup after this many days (default 30)
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -44,6 +46,7 @@ func LoadConfig(path string) (*Config, error) {
 
 	cfg := &Config{
 		SyncDir:        kv["sync_dir"],
+		TrashDir:       kv["trash_dir"],
 		PrimaryRemote:  kv["primary_remote"],
 		FallbackRemote: kv["fallback_remote"],
 		RclonePath:     kv["rclone_path"],
@@ -52,6 +55,13 @@ func LoadConfig(path string) (*Config, error) {
 
 	if cfg.RclonePath == "" {
 		cfg.RclonePath = "rclone"
+	}
+
+	if v, ok := kv["trash_retain_days"]; ok {
+		cfg.TrashRetainDays, _ = strconv.Atoi(v)
+	}
+	if cfg.TrashRetainDays <= 0 {
+		cfg.TrashRetainDays = 30
 	}
 
 	if v, ok := kv["debounce_sec"]; ok {

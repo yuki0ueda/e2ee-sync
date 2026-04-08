@@ -154,9 +154,11 @@ func runJoin() {
 	if err := os.MkdirAll(autosyncConfigDir, 0755); err != nil {
 		fatalf("Failed to create config dir: %v", err)
 	}
+	trashDir := filepath.Join(syncDir, ".trash")
 	configContent, err := tmpl.RenderAutosyncConfig(tmpl.AutosyncConfigData{
 		UseHub:         payload.UseHub,
 		SyncDir:        syncDir,
+		TrashDir:       trashDir,
 		FilterFilePath: filterPath,
 	})
 	if err != nil {

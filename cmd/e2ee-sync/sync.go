@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -114,9 +116,9 @@ func (s *Syncer) RunBisync() bool {
 		s.mu.Lock()
 		s.status.LastSync = time.Now()
 		s.mu.Unlock()
-		// Send updated status with LastSync
 		st := s.GetStatus()
 		s.sendStatus(st)
+		s.cleanOldTrash()
 		return true
 	} else {
 		log.Printf("Primary sync failed (%s): %v", s.cfg.PrimaryRemote, err)
@@ -193,6 +195,13 @@ func (s *Syncer) runBisyncCmd(remote string, resync bool, force bool) error {
 	if s.cfg.FilterFile != "" {
 		args = append(args, "--filters-file", s.cfg.FilterFile)
 	}
+	if s.cfg.TrashDir != "" {
+		// Move deleted/overwritten files to a dated trash folder instead of permanent deletion
+		today := time.Now().Format("2006-01-02")
+		backupDir := filepath.Join(s.cfg.TrashDir, today)
+		os.MkdirAll(backupDir, 0755)
+		args = append(args, "--backup-dir1", backupDir)
+	}
 	if resync {
 		args = append(args, "--resync")
 	}
@@ -208,6 +217,33 @@ func (s *Syncer) runBisyncCmd(remote string, resync bool, force bool) error {
 		return fmt.Errorf("%s: %s", err, stderr.String())
 	}
 	return nil
+}
+
+// cleanOldTrash removes trash directories older than TrashRetainDays.
+func (s *Syncer) cleanOldTrash() {
+	if s.cfg.TrashDir == "" || s.cfg.TrashRetainDays <= 0 {
+		return
+	}
+	cutoff := time.Now().AddDate(0, 0, -s.cfg.TrashRetainDays)
+	entries, err := os.ReadDir(s.cfg.TrashDir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		t, err := time.Parse("2006-01-02", e.Name())
+		if err != nil {
+			continue // skip non-date directories
+		}
+		if t.Before(cutoff) {
+			path := filepath.Join(s.cfg.TrashDir, e.Name())
+			if err := os.RemoveAll(path); err == nil {
+				log.Printf("Cleaned old trash: %s", path)
+			}
+		}
+	}
 }
 
 func isHubRemote(remote string) bool {

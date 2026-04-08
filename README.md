@@ -33,6 +33,12 @@ Device B ──┘             └───────────────�
 
 Files in `~/sync` (Windows: `%USERPROFILE%\sync`) are bidirectionally synced across all your devices. Files are encrypted client-side before leaving the device — the hub and cloud storage only store encrypted blobs. Exclusion patterns (`.DS_Store`, `*.tmp`, `node_modules/`, etc.) are configured in `filter-rules.txt`.
 
+### Trash (Deleted File Recovery)
+
+When files are deleted or overwritten during sync, the previous version is automatically saved to `~/sync/.trash/YYYY-MM-DD/`. Files in trash are kept for 30 days, then auto-cleaned.
+
+> **Note**: Cloud storage providers vary in versioning support. AWS S3 and Backblaze B2 support server-side versioning (enable it in your bucket settings for additional protection). Cloudflare R2 does not currently support object versioning — the local trash folder is your primary recovery mechanism.
+
 ## Prerequisites
 
 - [rclone](https://rclone.org/install/) 1.71.0+ installed and in PATH

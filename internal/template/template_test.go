@@ -9,6 +9,7 @@ func TestRenderAutosyncConfig_WithHub(t *testing.T) {
 	data := AutosyncConfigData{
 		UseHub:         true,
 		SyncDir:        "/home/user/sync",
+		TrashDir:       "/home/user/sync/.trash",
 		FilterFilePath: "/home/user/.config/rclone/filter-rules.txt",
 	}
 	got, err := RenderAutosyncConfig(data)
@@ -23,6 +24,9 @@ func TestRenderAutosyncConfig_WithHub(t *testing.T) {
 	}
 	if !strings.Contains(got, "sync_dir: /home/user/sync") {
 		t.Error("Expected sync_dir")
+	}
+	if !strings.Contains(got, "trash_dir: /home/user/sync/.trash") {
+		t.Error("Expected trash_dir")
 	}
 }
 
@@ -46,7 +50,7 @@ func TestRenderAutosyncConfig_WithoutHub(t *testing.T) {
 
 func TestFilterRules(t *testing.T) {
 	rules := FilterRules()
-	expected := []string{".DS_Store", "Thumbs.db", "*.tmp", "*.swp", ".rclone-test"}
+	expected := []string{".DS_Store", "Thumbs.db", "*.tmp", "*.swp", ".rclone-test", ".trash/**"}
 	for _, s := range expected {
 		if !strings.Contains(rules, s) {
 			t.Errorf("FilterRules() missing %q", s)
