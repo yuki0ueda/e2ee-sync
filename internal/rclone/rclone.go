@@ -68,18 +68,7 @@ func (c *Client) ConfigShow(name string) (map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("rclone config show %s failed: %w", name, err)
 	}
-	result := make(map[string]string)
-	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "[") {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			result[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-		}
-	}
-	return result, nil
+	return parseConfigShowOutput(string(out)), nil
 }
 
 // ListDir runs "rclone lsd" to list directories on a remote.
@@ -126,4 +115,20 @@ func (c *Client) Version() (string, error) {
 	}
 	lines := strings.SplitN(string(out), "\n", 2)
 	return strings.TrimSpace(lines[0]), nil
+}
+
+// parseConfigShowOutput parses the key=value output from rclone config show.
+func parseConfigShowOutput(output string) map[string]string {
+	result := make(map[string]string)
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "[") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			result[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+		}
+	}
+	return result
 }
