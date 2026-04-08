@@ -226,9 +226,13 @@ func runSyncLoop(cfg *Config, syncer *Syncer, syncNowCh <-chan struct{}, quitCh 
 func openPath(path string) {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("explorer", path)
+		// Use cmd /c start to handle paths with spaces correctly
+		cmd = exec.Command("cmd", "/c", "start", "", path)
 	} else {
 		cmd = exec.Command("xdg-open", path)
 	}
-	cmd.Start()
+	hideChildWindow(cmd)
+	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to open %s: %v", path, err)
+	}
 }

@@ -48,6 +48,7 @@ func (w *Watcher) Close() {
 }
 
 func (w *Watcher) addRecursive(root string) error {
+	seen := make(map[string]bool)
 	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // skip inaccessible
@@ -57,6 +58,16 @@ func (w *Watcher) addRecursive(root string) error {
 			if len(info.Name()) > 1 && info.Name()[0] == '.' {
 				return filepath.SkipDir
 			}
+			// Resolve symlinks to detect loops
+			realPath, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return nil // skip unresolvable
+			}
+			if seen[realPath] {
+				log.Printf("Skipping symlink loop: %s → %s", path, realPath)
+				return filepath.SkipDir
+			}
+			seen[realPath] = true
 			if err := w.fsw.Add(path); err != nil {
 				log.Printf("Watch add failed for %s: %v", path, err)
 			}
