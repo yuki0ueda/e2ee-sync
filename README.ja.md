@@ -4,7 +4,7 @@
 
 エンドツーエンド暗号化ファイル同期のセットアップツール。
 
-[rclone](https://rclone.org/) bisync によるクライアントサイド暗号化同期を複数デバイス間で構成します。[Tailscale](https://tailscale.com/) によるセキュアなLAN接続と、Cloudflare R2 によるクラウドフォールバックを組み合わせたアーキテクチャです。
+[rclone](https://rclone.org/) bisync によるクライアントサイド暗号化同期を複数デバイス間で構成します。[Tailscale](https://tailscale.com/) によるセキュアな接続と、Cloudflare R2 によるクラウドフォールバックを組み合わせたアーキテクチャです。
 
 ## アーキテクチャ
 
@@ -22,7 +22,7 @@
 └──────────────────────────────────┘
 ```
 
-- **hubあり**: LAN経由の高速同期 + hubがR2バックアップ担当 + ZFSスナップショットで世代管理
+- **hubあり**: Tailscale経由の高速直接同期 + hubがR2バックアップ担当 + ZFSスナップショットで世代管理
 - **hubなし**: デバイスがCloudflare R2に直接同期 — 低速だが完全に動作
 - **暗号化**: rclone crypt（ファイル名・ディレクトリ名暗号化、クライアント側のみ）
 
@@ -35,7 +35,7 @@
 - [rclone](https://rclone.org/install/) 1.71.0+ がインストール済みでPATHに存在すること
 - [Tailscale](https://tailscale.com/download) がインストール済みでtailnetに接続済みであること
 - Cloudflare R2 バケット（必須）
-- Tailscale経由で `e2ee-sync-hub` に到達可能であること（オプション — LAN高速同期を有効化）
+- Tailscale経由で `e2ee-sync-hub` に到達可能であること（オプション — 高速直接同期を有効化）
 
 ## はじめに
 
@@ -92,7 +92,7 @@ cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32; echo
 
 hub は**必須ではありません** — デバイスは Cloudflare R2 に直接同期できます。ただし、専用の Proxmox LXC hub を設置すると:
 
-- **高速同期** — インターネット往復ではなくLAN経由
+- **高速同期** — R2を経由せずTailscale直接接続
 - **ZFS スナップショット** — ポイントインタイムリカバリ
 - **R2 コスト削減** — 各デバイスが個別にR2同期する代わりにhubが一括処理
 
@@ -155,7 +155,7 @@ cd e2ee-sync
 # 現在のプラットフォーム向けにビルド
 make build
 
-# 全プラットフォーム向けクロスコンパイル（6 OS/arch x 2 バイナリ）
+# 全プラットフォーム向けクロスコンパイル
 make build-all
 ```
 

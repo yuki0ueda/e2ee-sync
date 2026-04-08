@@ -155,7 +155,7 @@ cd e2ee-sync
 # Build for current platform
 make build
 
-# Cross-compile all platforms (6 OS/arch x 2 binaries)
+# Cross-compile all platforms
 make build-all
 ```
 
