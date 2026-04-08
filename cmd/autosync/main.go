@@ -27,7 +27,7 @@ func main() {
 
 	// Set up file logging next to config.json
 	logPath := filepath.Join(filepath.Dir(*configPath), "autosync.log")
-	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err == nil {
 		log.SetOutput(logFile)
 		defer logFile.Close()

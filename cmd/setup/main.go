@@ -106,6 +106,8 @@ func runSetup() {
 		fatalf("tailscale not available: %v", err)
 	}
 
+	fmt.Println("  e2ee-sync-hub enables fast LAN sync (optional).")
+	fmt.Println("  Without it, devices sync directly via Cloudflare R2.")
 	useHub, _ := credential.Confirm("Do you have an e2ee-sync-hub?")
 	if useHub {
 		if err := checkHubReachability(); err != nil {
@@ -257,7 +259,7 @@ func runSetup() {
 		fatalf("Failed to render autosync config: %v", err)
 	}
 	autosyncConfigPath := filepath.Join(autosyncConfigDir, "config.json")
-	if err := os.WriteFile(autosyncConfigPath, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(autosyncConfigPath, []byte(configContent), 0600); err != nil {
 		fatalf("Failed to write config.json: %v", err)
 	}
 	ok("config.json written to %s", autosyncConfigPath)
@@ -438,6 +440,12 @@ func runVerify() {
 		ok("  autosync: %s", status)
 	} else {
 		warnf("  autosync: %s", status)
+		if runtime.GOOS == "windows" {
+			fmt.Fprintln(os.Stderr, "    Hint: Run register-daemon.bat as administrator")
+			fmt.Fprintf(os.Stderr, "    Location: %s\n", filepath.Join(plat.AutosyncBinDir(), "register-daemon.bat"))
+		} else {
+			fmt.Fprintln(os.Stderr, "    Hint: Run 'e2ee-sync-setup setup' to register the daemon")
+		}
 		allOk = false
 	}
 
@@ -680,7 +688,11 @@ func deployAutosyncTo(dstPath string) error {
 		}
 		srcPath = filepath.Join(setupDir, simpleName)
 		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			return fmt.Errorf("autosync binary not found in %s (tried %s and %s)", setupDir, srcName, simpleName)
+			return fmt.Errorf("autosync binary not found.\n"+
+				"  Download both e2ee-sync-setup and autosync from GitHub Releases\n"+
+				"  and place them in the same directory.\n"+
+				"  https://github.com/yuki0ueda/e2ee-sync/releases\n"+
+				"  Looked in: %s", setupDir)
 		}
 	}
 

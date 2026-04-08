@@ -23,18 +23,6 @@ func NewClient(binPath string) *Client {
 	return &Client{BinPath: binPath}
 }
 
-// Obscure runs "rclone obscure" to obfuscate a plaintext password.
-func (c *Client) Obscure(plaintext string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, c.BinPath, "obscure", plaintext)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("rclone obscure failed: %w", err)
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
 // ConfigCreate creates or updates an rclone remote using "rclone config create".
 // This lets rclone handle password obscuring internally, avoiding
 // command-line argument mangling and base64 auto-detection issues.
