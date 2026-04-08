@@ -19,12 +19,12 @@ import (
 
 func runJoin() {
 	fs := flag.NewFlagSet("join", flag.ExitOnError)
-	addr := fs.String("addr", "", "Address of the sharing device (ip:port)")
-	code := fs.String("code", "", "One-time code from the sharing device")
+	code := fs.String("code", "", "One-time code (required if share used --code)")
 	fs.Parse(os.Args[2:])
 
-	if *addr == "" || *code == "" {
-		fmt.Fprintln(os.Stderr, "Usage: e2ee-sync join --addr <ip:port> --code <code>")
+	addr := fs.Arg(0) // positional: ip:port
+	if addr == "" {
+		fmt.Fprintln(os.Stderr, "Usage: e2ee-sync join <ip:port> [--code <code>]")
 		os.Exit(1)
 	}
 
@@ -33,7 +33,10 @@ func runJoin() {
 	// Fetch config from sharing device
 	fmt.Println("Connecting...")
 	client := &http.Client{Timeout: 10 * time.Second}
-	url := fmt.Sprintf("http://%s/config?code=%s", *addr, *code)
+	url := fmt.Sprintf("http://%s/config", addr)
+	if *code != "" {
+		url += "?code=" + *code
+	}
 	resp, err := client.Get(url)
 	if err != nil {
 		fatalf("Cannot connect to sharing device: %v", err)

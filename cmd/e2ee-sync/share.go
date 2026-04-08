@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -32,6 +33,10 @@ type TransferPayload struct {
 }
 
 func runShare() {
+	fs := flag.NewFlagSet("share", flag.ExitOnError)
+	useCode := fs.Bool("code", false, "Require a one-time code (for shared tailnets)")
+	fs.Parse(os.Args[2:])
+
 	plat := platform.Detect()
 	rc := rclone.NewClient("")
 
@@ -49,8 +54,11 @@ func runShare() {
 		fatalf("Cannot read existing config: %v\nRun 'e2ee-sync setup' first.", err)
 	}
 
-	// Generate one-time code
-	code := generateCode()
+	// Generate one-time code if requested
+	var code string
+	if *useCode {
+		code = generateCode()
+	}
 
 	// Find a free port
 	listener, err := net.Listen("tcp", tsIP+":0")
@@ -64,7 +72,7 @@ func runShare() {
 	served := make(chan bool, 1)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("code") != code {
+		if code != "" && r.URL.Query().Get("code") != code {
 			http.Error(w, "Invalid code", http.StatusUnauthorized)
 			return
 		}
@@ -89,7 +97,11 @@ func runShare() {
 	fmt.Println("  Sharing configuration... (expires in 5 minutes)")
 	fmt.Println()
 	fmt.Println("  On the new device, run:")
-	fmt.Printf("    e2ee-sync join --addr %s --code %s\n", addr, code)
+	if code != "" {
+		fmt.Printf("    e2ee-sync join %s --code %s\n", addr, code)
+	} else {
+		fmt.Printf("    e2ee-sync join %s\n", addr)
+	}
 	fmt.Println()
 	fmt.Println("  Waiting for connection...")
 
