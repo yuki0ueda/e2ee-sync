@@ -17,6 +17,10 @@ func main() {
 	switch os.Args[1] {
 	case "setup":
 		runSetup()
+	case "share":
+		runShare()
+	case "join":
+		runJoin()
 	case "daemon":
 		runDaemon()
 	case "upgrade":
@@ -41,6 +45,8 @@ Usage:
 
 Commands:
   setup       Full device setup (interactive)
+  share       Share config to a new device (run on existing device)
+  join        Join using config from another device
   daemon      Run sync daemon (usually started by OS)
   upgrade     Update binary in place
   verify      Verify existing configuration

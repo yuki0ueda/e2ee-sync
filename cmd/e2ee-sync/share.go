@@ -1,0 +1,179 @@
+package main
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+
+	"github.com/yuki0ueda/e2ee-sync/internal/platform"
+	"github.com/yuki0ueda/e2ee-sync/internal/rclone"
+)
+
+// TransferPayload is the config data sent from an existing device to a new one.
+type TransferPayload struct {
+	UseHub            bool   `json:"use_hub"`
+	BackendProvider   string `json:"backend_provider"`
+	BackendName       string `json:"backend_name"`
+	S3AccessKeyID     string `json:"s3_access_key_id"`
+	S3SecretAccessKey string `json:"s3_secret_access_key"`
+	S3Endpoint        string `json:"s3_endpoint"`
+	S3Region          string `json:"s3_region"`
+	EncPassword       string `json:"enc_password"`
+	EncSalt           string `json:"enc_salt"`
+	WebDAVPassword    string `json:"webdav_password,omitempty"`
+}
+
+func runShare() {
+	plat := platform.Detect()
+	rc := rclone.NewClient("")
+
+	fmt.Print("\n=== Share Configuration ===\n\n")
+
+	// Get Tailscale IP
+	tsIP, err := getTailscaleIP()
+	if err != nil {
+		fatalf("Cannot get Tailscale IP: %v", err)
+	}
+
+	// Extract credentials from existing rclone config
+	payload, err := extractPayload(plat, rc)
+	if err != nil {
+		fatalf("Cannot read existing config: %v\nRun 'e2ee-sync setup' first.", err)
+	}
+
+	// Generate one-time code
+	code := generateCode()
+
+	// Find a free port
+	listener, err := net.Listen("tcp", tsIP+":0")
+	if err != nil {
+		fatalf("Cannot listen on Tailscale IP: %v", err)
+	}
+	addr := listener.Addr().String()
+	listener.Close()
+
+	// Start HTTP server
+	served := make(chan bool, 1)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("code") != code {
+			http.Error(w, "Invalid code", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(payload)
+		served <- true
+	})
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
+
+	go func() {
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Fatalf("Listen failed: %v", err)
+		}
+		server.Serve(ln)
+	}()
+
+	fmt.Println("  Sharing configuration... (expires in 5 minutes)")
+	fmt.Println()
+	fmt.Println("  On the new device, run:")
+	fmt.Printf("    e2ee-sync join --addr %s --code %s\n", addr, code)
+	fmt.Println()
+	fmt.Println("  Waiting for connection...")
+
+	select {
+	case <-served:
+		fmt.Println()
+		ok("Configuration sent. Done.")
+	case <-time.After(5 * time.Minute):
+		fmt.Println()
+		warnf("Timed out. No device connected.")
+	}
+
+	server.Close()
+}
+
+func getTailscaleIP() (string, error) {
+	cmd := exec.Command("tailscale", "ip", "-4")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("tailscale ip failed: %w", err)
+	}
+	ip := strings.TrimSpace(string(out))
+	if ip == "" {
+		return "", fmt.Errorf("no Tailscale IPv4 address")
+	}
+	return ip, nil
+}
+
+func extractPayload(plat platform.Platform, rc *rclone.Client) (*TransferPayload, error) {
+	payload := &TransferPayload{}
+
+	// Detect hub mode
+	configDir := plat.RcloneConfigDir()
+	confBytes, err := os.ReadFile(configDir + "/rclone.conf")
+	if err != nil {
+		return nil, fmt.Errorf("cannot read rclone.conf: %w", err)
+	}
+	payload.UseHub = strings.Contains(string(confBytes), "[hub-webdav]")
+
+	// Extract cloud-direct (S3) credentials
+	cloudShow, err := rc.ConfigShow("cloud-direct")
+	if err != nil {
+		return nil, fmt.Errorf("cannot read cloud-direct config: %w", err)
+	}
+	payload.BackendProvider = cloudShow["provider"]
+	payload.S3AccessKeyID = cloudShow["access_key_id"]
+	payload.S3SecretAccessKey = cloudShow["secret_access_key"]
+	payload.S3Endpoint = cloudShow["endpoint"]
+	payload.S3Region = cloudShow["region"]
+
+	// Map provider to display name
+	switch payload.BackendProvider {
+	case "Cloudflare":
+		payload.BackendName = "Cloudflare R2"
+	case "AWS":
+		payload.BackendName = "AWS S3"
+	case "B2":
+		payload.BackendName = "Backblaze B2"
+	default:
+		payload.BackendName = "S3-compatible"
+	}
+
+	// Extract encryption credentials
+	cryptShow, err := rc.ConfigShow("cloud-crypt")
+	if err != nil {
+		return nil, fmt.Errorf("cannot read cloud-crypt config: %w", err)
+	}
+	payload.EncPassword = cryptShow["password"]
+	payload.EncSalt = cryptShow["password2"]
+
+	// Extract WebDAV credentials if hub mode
+	if payload.UseHub {
+		hubShow, err := rc.ConfigShow("hub-webdav")
+		if err != nil {
+			return nil, fmt.Errorf("cannot read hub-webdav config: %w", err)
+		}
+		payload.WebDAVPassword = hubShow["pass"]
+	}
+
+	return payload, nil
+}
+
+func generateCode() string {
+	b := make([]byte, 4)
+	rand.Read(b)
+	return strings.ToUpper(hex.EncodeToString(b))
+}

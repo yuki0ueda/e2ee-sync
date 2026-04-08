@@ -58,6 +58,30 @@ func (c *Client) ConfigDelete(name string) error {
 	return nil
 }
 
+// ConfigShow runs "rclone config show <remote>" and returns key-value pairs.
+// Values are de-obscured (plaintext) by rclone.
+func (c *Client) ConfigShow(name string) (map[string]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, c.BinPath, "config", "show", name)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("rclone config show %s failed: %w", name, err)
+	}
+	result := make(map[string]string)
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "[") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			result[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+		}
+	}
+	return result, nil
+}
+
 // ListDir runs "rclone lsd" to list directories on a remote.
 // Used as a connection test. Returns the stderr output along with any error
 // so callers can inspect the failure reason (e.g. 401 Unauthorized).
