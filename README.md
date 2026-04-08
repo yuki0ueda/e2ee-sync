@@ -4,14 +4,14 @@
 
 End-to-end encrypted file synchronization setup tool.
 
-Automates the configuration of [rclone](https://rclone.org/) bisync with client-side encryption across multiple devices, using [Tailscale](https://tailscale.com/) for secure LAN connectivity and Cloudflare R2 as a cloud fallback.
+Automates the configuration of [rclone](https://rclone.org/) bisync with client-side encryption across multiple devices, using [Tailscale](https://tailscale.com/) for secure connectivity and Cloudflare R2 as a cloud fallback.
 
 ## Architecture
 
 ```
                       ┌──────────────────────────┐
 Device A ──┐          │  e2ee-sync-hub (optional) │
-            ├── LAN ──┤  WebDAV + R2 backup       │
+            ├─ Tailscale ─┤  WebDAV + R2 backup       │
 Device B ──┘          └──────────────────────────┘
   │                              │
   │  R2 direct (hub down        │  periodic sync
@@ -22,7 +22,7 @@ Device B ──┘          └────────────────�
 └──────────────────────────────────┘
 ```
 
-- **With hub**: Fast LAN sync via WebDAV + hub handles R2 backup + ZFS snapshots for versioning
+- **With hub**: Fast direct sync via Tailscale WebDAV + hub handles R2 backup + ZFS snapshots for versioning
 - **Without hub**: Devices sync directly to Cloudflare R2 — slower but fully functional
 - **Encryption**: rclone crypt with filename and directory name encryption (client-side only)
 
@@ -35,7 +35,7 @@ Files in `~/sync` (Windows: `%USERPROFILE%\sync`) are bidirectionally synced acr
 - [rclone](https://rclone.org/install/) 1.71.0+ installed and in PATH
 - [Tailscale](https://tailscale.com/download) installed and connected to your tailnet
 - Cloudflare R2 bucket (required)
-- `e2ee-sync-hub` reachable via Tailscale (optional — enables fast LAN sync)
+- `e2ee-sync-hub` reachable via Tailscale (optional — enables fast direct sync)
 
 ## Getting Started
 
@@ -92,7 +92,7 @@ cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32; echo
 
 The hub is **not required** — devices can sync directly via Cloudflare R2. However, a dedicated Proxmox LXC hub provides:
 
-- **Faster sync** via LAN instead of internet round-trip
+- **Faster sync** via Tailscale direct connection instead of R2 round-trip
 - **ZFS snapshots** for point-in-time recovery
 - **Reduced R2 costs** (hub batches uploads instead of every device syncing individually)
 

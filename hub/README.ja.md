@@ -5,7 +5,7 @@
 [e2ee-sync](https://github.com/yuki0ueda/e2ee-sync) の**オプション**コンポーネント — Proxmox LXC ハブのセットアップガイド。
 
 > **hub は必須ではありません。** デバイスは hub なしでも Cloudflare R2 に直接同期できます。
-> hub を設置すると、LAN高速同期・ZFSスナップショット・R2 APIコスト削減が利用可能になります。
+> hub を設置すると、Tailscale経由の高速直接同期・ZFSスナップショット・R2 APIコスト削減が利用可能になります。
 >
 > **対象**: Proxmox VE を所有し、専用 LXC を Hub として運用する上級者向け構成。
 

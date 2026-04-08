@@ -5,7 +5,7 @@
 Setup guide for the Proxmox LXC hub — an **optional** component of [e2ee-sync](https://github.com/yuki0ueda/e2ee-sync).
 
 > **The hub is not required.** Devices can sync directly via Cloudflare R2 without a hub.
-> The hub adds fast LAN sync, ZFS snapshots, and reduced R2 API costs.
+> The hub adds fast direct sync via Tailscale, ZFS snapshots, and reduced R2 API costs.
 >
 > **Audience**: Advanced users with Proxmox VE who want a dedicated LXC as the sync hub.
 
