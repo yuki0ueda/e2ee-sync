@@ -274,6 +274,8 @@ e2ee-sync works with any S3-compatible storage. For a detailed comparison of pro
 
 Quick summary: **10GB and under is free** (R2/B2/IDrive e2 free tier). 100GB costs $0.40-$1.50/month depending on provider.
 
+To prevent unexpected costs, see the **[Cost Control Guide](docs/cost-control.md)** — covers billing alerts, transfer limits, and filter rules.
+
 ## License
 
 [MIT](LICENSE)

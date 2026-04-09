@@ -208,6 +208,9 @@ func (s *Syncer) runBisyncCmd(remote string, resync bool, force bool) error {
 		os.MkdirAll(backupDir, 0700)
 		args = append(args, "--backup-dir1", backupDir)
 	}
+	if s.cfg.MaxTransferPerSync != "" {
+		args = append(args, "--max-transfer", s.cfg.MaxTransferPerSync, "--cutoff-mode", "SOFT")
+	}
 	if resync {
 		args = append(args, "--resync")
 	}

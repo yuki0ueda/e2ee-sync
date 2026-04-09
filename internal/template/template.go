@@ -27,6 +27,7 @@ debounce_sec: 5
 poll_interval_sec: 300
 trash_retain_days: 30
 hub_timeout_sec: 5
+# max_transfer_per_sync: 1G
 `
 
 // RenderDaemonConfig generates the daemon config.json content.

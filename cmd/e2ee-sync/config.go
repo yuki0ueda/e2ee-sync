@@ -19,7 +19,8 @@ type Config struct {
 	DebounceSec     int
 	PollIntervalSec int
 	TrashRetainDays int // auto-cleanup after this many days (default 30)
-	HubTimeoutSec   int // timeout for hub reachability check (default 5)
+	HubTimeoutSec      int    // timeout for hub reachability check (default 5)
+	MaxTransferPerSync string // max bytes per sync, e.g. "1G" (default: unlimited)
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -86,6 +87,8 @@ func LoadConfig(path string) (*Config, error) {
 	if cfg.PollIntervalSec <= 0 {
 		cfg.PollIntervalSec = 300
 	}
+
+	cfg.MaxTransferPerSync = kv["max_transfer_per_sync"] // e.g. "1G", "500M"
 
 	if cfg.SyncDir == "" {
 		return nil, fmt.Errorf("sync_dir is required")
