@@ -17,6 +17,7 @@ e2ee-sync is designed for syncing **sensitive documents** across your devices â€
 - API keys, SSH keys, `.env` files, password databases
 - Private notes, journals, research drafts
 - Tax returns, invoices, business plans
+- Long-term encrypted archival (compliance records, old projects, personal history)
 - Any file where a cloud provider breach would be a serious problem
 
 **Not designed for:**
@@ -24,6 +25,15 @@ e2ee-sync is designed for syncing **sensitive documents** across your devices â€
 - Real-time collaboration (this is sync, not Google Docs)
 - Mobile access (desktop only â€” Windows, macOS, Linux)
 - File sharing with others (personal sync, no share links)
+
+**Common use patterns:**
+
+| Pattern | Example | Why e2ee-sync |
+|---------|---------|--------------|
+| Cross-device sync | Laptop â†” Desktop | Keep sensitive work files in sync |
+| Encrypted backup | PC â†’ Cloud | Off-site backup with client-side encryption |
+| Long-term archive | Tax records, contracts | Cheap cloud storage ($0.004/GB) + encryption you control forever |
+| Credential sync | `.env`, SSH keys, KeePass DB | Sync secrets without trusting a cloud provider |
 
 > **Use the right tool for each job.** Sync sensitive documents with e2ee-sync. Share photos with iCloud/Google Photos. Collaborate on docs with Google Drive. Back up large files with Backblaze. e2ee-sync handles the files you can't afford to leave unencrypted.
 
