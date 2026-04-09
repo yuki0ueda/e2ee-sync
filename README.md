@@ -53,7 +53,14 @@ e2ee-sync takes a different approach:
 | **No account required** | No sign-up, no login, no user tracking. You bring your own storage. |
 | **Open source** | Every line of code is auditable. The encryption is rclone's battle-tested crypt, not a custom scheme. |
 
-**The result:** your sensitive files sync across your desktops, encrypted at rest in the cloud, with zero trust in any third party. Nothing more, nothing less.
+**What if this project is abandoned?** Your data survives. It's standard rclone crypt on a standard S3 bucket — both open, documented formats. You can always access your files directly:
+
+```bash
+rclone mount cloud-crypt: /mnt/sync   # mount as local drive
+rclone copy cloud-crypt: /local/dir   # download everything
+```
+
+No proprietary format. No vendor lock-in. No special tools needed. Your data is yours, permanently.
 
 ## Architecture
 
