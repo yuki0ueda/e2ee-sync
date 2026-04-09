@@ -37,6 +37,24 @@ e2ee-sync is designed for syncing **sensitive documents** across your devices �
 
 > **Use the right tool for each job.** Sync sensitive documents with e2ee-sync. Share photos with iCloud/Google Photos. Collaborate on docs with Google Drive. Back up large files with Backblaze. e2ee-sync handles the files you can't afford to leave unencrypted.
 
+## Design Philosophy
+
+e2ee-sync intentionally omits features that other E2EE services provide — mobile apps, web UI, file sharing, cloud previews. This is not a limitation; it's a design choice.
+
+**Minimal attack surface over convenience.** Every feature that touches your decrypted data is a potential attack vector. A mobile app means your secrets live on a phone that can be lost or compromised. A web UI means your encryption keys pass through a browser. Share links mean your encrypted files become accessible via URL. Cloud previews mean someone, somewhere, decrypts your files.
+
+e2ee-sync takes a different approach:
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Files stay local** | Your `~/sync` folder is an ordinary directory. Open files with your normal apps — no special viewer needed. |
+| **Keys never leave your device** | Encryption/decryption happens on your machine only. No server-side processing. |
+| **No app dependency** | Your data is standard rclone crypt on standard S3 objects. If e2ee-sync disappears, decrypt with rclone directly. |
+| **No account required** | No sign-up, no login, no user tracking. You bring your own storage. |
+| **Open source** | Every line of code is auditable. The encryption is rclone's battle-tested crypt, not a custom scheme. |
+
+**The result:** your sensitive files sync across your desktops, encrypted at rest in the cloud, with zero trust in any third party. Nothing more, nothing less.
+
 ## Architecture
 
 ```
