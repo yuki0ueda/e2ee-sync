@@ -210,6 +210,14 @@ e2ee-sync/
 └── Makefile
 ```
 
+## Cost Comparison
+
+e2ee-sync works with any S3-compatible storage. For a detailed comparison of providers (Cloudflare R2, Backblaze B2, IDrive e2, AWS S3, etc.), subscription services (Dropbox, Filen), and lifetime deals (pCloud, Internxt, Icedrive), see:
+
+**[Cost Comparison Guide](docs/cost-comparison.md)**
+
+Quick summary: **10GB and under is free** (R2/B2/IDrive e2 free tier). 100GB costs $0.40-$1.50/month depending on provider.
+
 ## License
 
 [MIT](LICENSE)

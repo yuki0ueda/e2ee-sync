@@ -210,6 +210,14 @@ e2ee-sync/
 └── Makefile
 ```
 
+## コスト比較
+
+e2ee-sync は任意の S3 互換ストレージで動作します。プロバイダー比較（Cloudflare R2, Backblaze B2, IDrive e2, AWS S3 等）、サブスクサービス（Dropbox, Filen）、買い切りプラン（pCloud, Internxt, Icedrive）の詳細は:
+
+**[コスト比較ガイド](docs/cost-comparison.ja.md)**
+
+要約: **10GB 以下は無料**（R2/B2/IDrive e2 無料枠）。100GB で月 $0.40〜$1.50。
+
 ## ライセンス
 
 [MIT](LICENSE)
