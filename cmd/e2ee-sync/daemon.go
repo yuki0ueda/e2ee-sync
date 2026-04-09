@@ -12,7 +12,9 @@ import (
 func runDaemon() {
 	fs := flag.NewFlagSet("daemon", flag.ExitOnError)
 	configPath := fs.String("config", "", "Path to config.json")
-	fs.Parse(os.Args[2:])
+	if len(os.Args) > 2 {
+		fs.Parse(os.Args[2:])
+	}
 
 	if *configPath == "" {
 		log.Fatal("Usage: e2ee-sync daemon --config <path/to/config.json>")

@@ -21,7 +21,9 @@ import (
 func runJoin() {
 	fs := flag.NewFlagSet("join", flag.ExitOnError)
 	code := fs.String("code", "", "One-time code (required if share used --code)")
-	fs.Parse(os.Args[2:])
+	if len(os.Args) > 2 {
+		fs.Parse(os.Args[2:])
+	}
 
 	addr := fs.Arg(0) // positional: ip:port
 	if addr == "" {
