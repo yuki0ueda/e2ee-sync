@@ -86,7 +86,9 @@ func runSetup() {
 	}
 	clearCreds(creds)
 	// Ensure rclone.conf has restricted permissions (rclone may not set 0600)
-	os.Chmod(confPath, 0600)
+	if err := os.Chmod(confPath, 0600); err != nil {
+		warnf("Could not restrict permissions on %s: %v", confPath, err)
+	}
 	ok("rclone.conf written to %s", confPath)
 
 	// Step 4: Filter rules

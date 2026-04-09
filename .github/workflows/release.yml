@@ -26,6 +26,14 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Inject Windows manifest version
+        run: |
+          go install github.com/tc-hib/go-winres@latest
+          TAG="${GITHUB_REF_NAME#v}"
+          WIN_VER="${TAG}.0"
+          sed -i "s/\"version\": \"0.0.0.0\"/\"version\": \"${WIN_VER}\"/" cmd/e2ee-sync/winres/winres.json
+          cd cmd/e2ee-sync && go-winres make --product-version="${WIN_VER}" --file-version="${WIN_VER}"
+
       - name: Build all platforms
         run: make build-all
 
