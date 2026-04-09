@@ -272,9 +272,16 @@ func runUpgrade() {
 		return
 	}
 
-	// Stop daemon
+	// Stop daemon process
 	fmt.Println("Stopping daemon...")
-	_ = plat.UnregisterDaemon()
+	if runtime.GOOS == "windows" {
+		// On Windows, UnregisterDaemon only generates a bat file.
+		// Kill the process directly so we can replace the binary.
+		_ = exec.Command("taskkill", "/IM", "e2ee-sync.exe", "/F").Run()
+		time.Sleep(1 * time.Second) // wait for file handle release
+	} else {
+		_ = plat.UnregisterDaemon()
+	}
 
 	// Replace binary
 	fmt.Println("Replacing binary...")
@@ -292,6 +299,10 @@ func runUpgrade() {
 	configPath := filepath.Join(plat.ConfigDir(), "config.json")
 	if err := plat.RegisterDaemon(binPath, configPath); err != nil {
 		warnf("Daemon restart failed: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		fmt.Println("  To restart the daemon, run register-daemon.bat as administrator:")
+		fmt.Printf("  %s\n", filepath.Join(plat.BinDir(), "register-daemon.bat"))
 	}
 
 	// Verify
