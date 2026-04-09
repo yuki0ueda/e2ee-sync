@@ -62,6 +62,8 @@ rclone copy cloud-crypt: /local/dir   # download everything
 
 No proprietary format. No vendor lock-in. No special tools needed. Your data is yours, permanently.
 
+For detailed recovery procedures (lost computer, provider migration, corrupted sync, lost password), see the **[Disaster Recovery Guide](docs/disaster-recovery.md)**.
+
 ## Architecture
 
 ```
