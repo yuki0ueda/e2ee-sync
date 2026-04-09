@@ -227,11 +227,11 @@ e2ee-sync join <ip:port> --code <CODE>
 
 ## Platform Support
 
-| OS | Daemon | Download |
-|----|--------|----------|
-| Linux | systemd user service | `e2ee-sync-linux-x64` / `e2ee-sync-linux-arm64` |
-| macOS | LaunchAgent | `e2ee-sync-mac-x64` / `e2ee-sync-mac-arm64` |
-| Windows | Task Scheduler (`register-daemon.bat`) | `e2ee-sync-win-x64.exe` / `e2ee-sync-win-arm64.exe` |
+| OS | Daemon | Download | Tested |
+|----|--------|----------|--------|
+| Linux | systemd user service | `e2ee-sync-linux-x64` / `e2ee-sync-linux-arm64` | — |
+| macOS | LaunchAgent | `e2ee-sync-mac-x64` / `e2ee-sync-mac-arm64` | — |
+| Windows | Task Scheduler (`register-daemon.bat`) | `e2ee-sync-win-x64.exe` / `e2ee-sync-win-arm64.exe` | x64, arm64 |
 
 ## Building from Source
 

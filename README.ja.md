@@ -227,11 +227,11 @@ e2ee-sync join <ip:port> --code <CODE>
 
 ## 対応プラットフォーム
 
-| OS | デーモン方式 | ダウンロード |
-|----|------------|------------|
-| Linux | systemd user service | `e2ee-sync-linux-x64` / `e2ee-sync-linux-arm64` |
-| macOS | LaunchAgent | `e2ee-sync-mac-x64` / `e2ee-sync-mac-arm64` |
-| Windows | タスクスケジューラ（`register-daemon.bat`） | `e2ee-sync-win-x64.exe` / `e2ee-sync-win-arm64.exe` |
+| OS | デーモン方式 | ダウンロード | 実機テスト済み |
+|----|------------|------------|--------------|
+| Linux | systemd user service | `e2ee-sync-linux-x64` / `e2ee-sync-linux-arm64` | — |
+| macOS | LaunchAgent | `e2ee-sync-mac-x64` / `e2ee-sync-mac-arm64` | — |
+| Windows | タスクスケジューラ（`register-daemon.bat`） | `e2ee-sync-win-x64.exe` / `e2ee-sync-win-arm64.exe` | x64, arm64 |
 
 ## ソースからビルド
 
