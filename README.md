@@ -8,6 +8,25 @@ Automates the configuration of [rclone](https://rclone.org/) bisync with client-
 
 Supported backends: Cloudflare R2, AWS S3, Backblaze B2, and other S3-compatible services.
 
+## Who Is This For?
+
+e2ee-sync is designed for syncing **sensitive documents** across your devices — files where you need to control the encryption keys yourself, not trust a cloud provider.
+
+**Best for:**
+- Contracts, financial records, legal documents
+- API keys, SSH keys, `.env` files, password databases
+- Private notes, journals, research drafts
+- Tax returns, invoices, business plans
+- Any file where a cloud provider breach would be a serious problem
+
+**Not designed for:**
+- Large video files (no delta sync — full re-upload on every change)
+- Real-time collaboration (this is sync, not Google Docs)
+- Mobile access (desktop only — Windows, macOS, Linux)
+- File sharing with others (personal sync, no share links)
+
+> **Use the right tool for each job.** Sync sensitive documents with e2ee-sync. Share photos with iCloud/Google Photos. Collaborate on docs with Google Drive. Back up large files with Backblaze. e2ee-sync handles the files you can't afford to leave unencrypted.
+
 ## Architecture
 
 ```
