@@ -3,6 +3,7 @@ package rclone
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -69,6 +70,40 @@ func (c *Client) ConfigShow(name string) (map[string]string, error) {
 		return nil, fmt.Errorf("rclone config show %s failed: %w", name, err)
 	}
 	return parseConfigShowOutput(string(out)), nil
+}
+
+// ConfigDump runs "rclone config dump" and returns all remotes as a nested map.
+// Unlike ConfigShow, this returns raw obscured values (not masked with ***).
+// Returns map[remoteName]map[key]value.
+func (c *Client) ConfigDump() (map[string]map[string]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, c.BinPath, "config", "dump")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("rclone config dump failed: %w", err)
+	}
+	var result map[string]map[string]string
+	if err := json.Unmarshal(out, &result); err != nil {
+		return nil, fmt.Errorf("rclone config dump parse failed: %w", err)
+	}
+	return result, nil
+}
+
+// ConfigCreateNoObscure creates a remote with already-obscured password values.
+func (c *Client) ConfigCreateNoObscure(name, remoteType string, params ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	args := []string{"config", "create", name, remoteType}
+	args = append(args, params...)
+	args = append(args, "--no-obscure")
+	cmd := exec.CommandContext(ctx, c.BinPath, args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("rclone config create %s failed: %s", name, stderr.String())
+	}
+	return nil
 }
 
 // ListDir runs "rclone lsd" to list directories on a remote.

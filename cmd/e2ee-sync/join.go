@@ -124,30 +124,36 @@ func runJoin() {
 	confPath := filepath.Join(configDir, "rclone.conf")
 	backupRcloneConf(confPath)
 
-	creds := &credential.Credentials{
-		WebDAVPassword:     payload.WebDAVPassword,
-		EncryptionPassword: payload.EncPassword,
-		EncryptionSalt:     payload.EncSalt,
-		S3AccessKeyID:      payload.S3AccessKeyID,
-		S3SecretAccessKey:  payload.S3SecretAccessKey,
-		S3Endpoint:         payload.S3Endpoint,
-		S3Region:           payload.S3Region,
-		Backend: credential.Backend{
-			Name:     payload.BackendName,
-			Provider: payload.BackendProvider,
-		},
-	}
 	hubEndpoint := payload.HubEndpoint
 	if hubEndpoint == "" {
 		hubEndpoint = "e2ee-sync-hub:8080"
 	}
-	if err := createRcloneRemotes(rc, creds, payload.UseHub, hubEndpoint); err != nil {
-		fatalf("Failed to create rclone remotes: %v", err)
+
+	if payload.Obscured {
+		// Values are already rclone-obscured — use --no-obscure to write as-is
+		if err := createRcloneRemotesObscured(rc, payload, hubEndpoint); err != nil {
+			fatalf("Failed to create rclone remotes: %v", err)
+		}
+	} else {
+		// Legacy: plaintext values
+		creds := &credential.Credentials{
+			WebDAVPassword:     payload.WebDAVPassword,
+			EncryptionPassword: payload.EncPassword,
+			EncryptionSalt:     payload.EncSalt,
+			S3AccessKeyID:      payload.S3AccessKeyID,
+			S3SecretAccessKey:  payload.S3SecretAccessKey,
+			S3Endpoint:         payload.S3Endpoint,
+			S3Region:           payload.S3Region,
+			Backend: credential.Backend{
+				Name:     payload.BackendName,
+				Provider: payload.BackendProvider,
+			},
+		}
+		if err := createRcloneRemotes(rc, creds, payload.UseHub, hubEndpoint); err != nil {
+			fatalf("Failed to create rclone remotes: %v", err)
+		}
+		clearCreds(creds)
 	}
-	creds.EncryptionPassword = ""
-	creds.EncryptionSalt = ""
-	creds.S3SecretAccessKey = ""
-	creds.WebDAVPassword = ""
 	ok("rclone.conf written to %s", confPath)
 
 	// Step 3: Filter rules
@@ -233,4 +239,59 @@ func runJoin() {
 	fmt.Printf("  Hub mode:        %v\n", payload.UseHub)
 	fmt.Println()
 	fmt.Println("This device is now syncing with your other devices.")
+}
+
+// createRcloneRemotesObscured creates rclone remotes using already-obscured password values.
+func createRcloneRemotesObscured(rc *rclone.Client, payload TransferPayload, hubEndpoint string) error {
+	if payload.UseHub {
+		// hub-webdav: pass is obscured
+		if err := rc.ConfigCreateNoObscure("hub-webdav", "webdav",
+			"url", fmt.Sprintf("http://%s", hubEndpoint),
+			"vendor", "other",
+			"user", "rclone",
+			"pass", payload.WebDAVPassword,
+		); err != nil {
+			return fmt.Errorf("create hub-webdav: %w", err)
+		}
+		// hub-crypt: password/password2 are obscured
+		if err := rc.ConfigCreateNoObscure("hub-crypt", "crypt",
+			"remote", "hub-webdav:",
+			"password", payload.EncPassword,
+			"password2", payload.EncSalt,
+			"filename_encryption", "standard",
+			"directory_name_encryption", "true",
+		); err != nil {
+			return fmt.Errorf("create hub-crypt: %w", err)
+		}
+	}
+
+	// cloud-direct: secret_access_key is obscured
+	s3Params := []string{
+		"provider", payload.BackendProvider,
+		"access_key_id", payload.S3AccessKeyID,
+		"secret_access_key", payload.S3SecretAccessKey,
+		"acl", "private",
+	}
+	if payload.S3Endpoint != "" {
+		s3Params = append(s3Params, "endpoint", payload.S3Endpoint)
+	}
+	if payload.S3Region != "" {
+		s3Params = append(s3Params, "region", payload.S3Region)
+	}
+	if err := rc.ConfigCreateNoObscure("cloud-direct", "s3", s3Params...); err != nil {
+		return fmt.Errorf("create cloud-direct: %w", err)
+	}
+
+	// cloud-crypt: password/password2 are obscured
+	if err := rc.ConfigCreateNoObscure("cloud-crypt", "crypt",
+		"remote", "cloud-direct:e2ee-sync",
+		"password", payload.EncPassword,
+		"password2", payload.EncSalt,
+		"filename_encryption", "standard",
+		"directory_name_encryption", "true",
+	); err != nil {
+		return fmt.Errorf("create cloud-crypt: %w", err)
+	}
+
+	return nil
 }

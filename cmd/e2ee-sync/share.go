@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -34,6 +33,7 @@ type TransferPayload struct {
 	EncPassword       string `json:"enc_password"`
 	EncSalt           string `json:"enc_salt"`
 	WebDAVPassword    string `json:"webdav_password,omitempty"`
+	Obscured          bool   `json:"obscured"` // true = passwords are rclone-obscured, use --no-obscure
 }
 
 func runShare() {
@@ -150,26 +150,24 @@ func getTailscaleIP() (string, error) {
 }
 
 func extractPayload(plat platform.Platform, rc *rclone.Client) (*TransferPayload, error) {
-	payload := &TransferPayload{}
+	payload := &TransferPayload{Obscured: true}
 
-	// Detect hub mode
-	configDir := plat.RcloneConfigDir()
-	confBytes, err := os.ReadFile(filepath.Join(configDir, "rclone.conf"))
+	// Use config dump to get raw obscured values (config show masks passwords)
+	dump, err := rc.ConfigDump()
 	if err != nil {
-		return nil, fmt.Errorf("cannot read rclone.conf: %w", err)
+		return nil, fmt.Errorf("cannot dump rclone config: %w", err)
 	}
-	payload.UseHub = strings.Contains(string(confBytes), "[hub-webdav]")
 
-	// Extract cloud-direct (S3) credentials
-	cloudShow, err := rc.ConfigShow("cloud-direct")
-	if err != nil {
-		return nil, fmt.Errorf("cannot read cloud-direct config: %w", err)
+	// Extract cloud-direct (S3)
+	cloudCfg, ok := dump["cloud-direct"]
+	if !ok {
+		return nil, fmt.Errorf("cloud-direct remote not found in rclone config")
 	}
-	payload.BackendProvider = cloudShow["provider"]
-	payload.S3AccessKeyID = cloudShow["access_key_id"]
-	payload.S3SecretAccessKey = cloudShow["secret_access_key"]
-	payload.S3Endpoint = cloudShow["endpoint"]
-	payload.S3Region = cloudShow["region"]
+	payload.BackendProvider = cloudCfg["provider"]
+	payload.S3AccessKeyID = cloudCfg["access_key_id"]
+	payload.S3SecretAccessKey = cloudCfg["secret_access_key"]
+	payload.S3Endpoint = cloudCfg["endpoint"]
+	payload.S3Region = cloudCfg["region"]
 
 	// Map provider to display name
 	switch payload.BackendProvider {
@@ -183,30 +181,24 @@ func extractPayload(plat platform.Platform, rc *rclone.Client) (*TransferPayload
 		payload.BackendName = "S3-compatible"
 	}
 
+	// Detect hub mode
+	_, payload.UseHub = dump["hub-webdav"]
+
 	// Extract hub endpoint if hub mode
 	if payload.UseHub {
-		hubShow, err := rc.ConfigShow("hub-webdav")
-		if err == nil {
-			payload.HubEndpoint = strings.TrimPrefix(hubShow["url"], "http://")
+		if hubCfg, ok := dump["hub-webdav"]; ok {
+			payload.HubEndpoint = strings.TrimPrefix(hubCfg["url"], "http://")
+			payload.WebDAVPassword = hubCfg["pass"] // obscured
 		}
 	}
 
-	// Extract encryption credentials
-	cryptShow, err := rc.ConfigShow("cloud-crypt")
-	if err != nil {
-		return nil, fmt.Errorf("cannot read cloud-crypt config: %w", err)
+	// Extract encryption credentials (obscured values)
+	cryptCfg, ok := dump["cloud-crypt"]
+	if !ok {
+		return nil, fmt.Errorf("cloud-crypt remote not found in rclone config")
 	}
-	payload.EncPassword = cryptShow["password"]
-	payload.EncSalt = cryptShow["password2"]
-
-	// Extract WebDAV credentials if hub mode
-	if payload.UseHub {
-		hubShow, err := rc.ConfigShow("hub-webdav")
-		if err != nil {
-			return nil, fmt.Errorf("cannot read hub-webdav config: %w", err)
-		}
-		payload.WebDAVPassword = hubShow["pass"]
-	}
+	payload.EncPassword = cryptCfg["password"]
+	payload.EncSalt = cryptCfg["password2"]
 
 	return payload, nil
 }
