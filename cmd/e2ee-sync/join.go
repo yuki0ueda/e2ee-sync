@@ -27,11 +27,21 @@ func runJoin() {
 
 	addr := fs.Arg(0) // positional: ip:port
 	if addr == "" {
-		fmt.Fprintln(os.Stderr, "Usage: e2ee-sync join <ip:port> [--code <code>]")
-		os.Exit(1)
+		// Interactive mode (called from menu)
+		fmt.Print("\n=== Join E2EE File Sync ===\n\n")
+		fmt.Println("  Enter the address shown by 'e2ee-sync share' on another device.")
+		var err error
+		addr, err = credential.ReadLine("  Address (ip:port): ")
+		if err != nil || addr == "" {
+			fatalf("Address is required. Run 'e2ee-sync share' on an existing device first.")
+		}
+		codeInput, _ := credential.ReadLine("  Code (leave empty if none): ")
+		if codeInput != "" {
+			*code = codeInput
+		}
+	} else {
+		fmt.Print("\n=== Join E2EE File Sync ===\n\n")
 	}
-
-	fmt.Print("\n=== Join E2EE File Sync ===\n\n")
 
 	// Fetch config from sharing device
 	fmt.Println("Connecting...")
