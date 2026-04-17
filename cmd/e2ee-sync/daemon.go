@@ -5,9 +5,28 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	"github.com/yuki0ueda/e2ee-sync/internal/version"
 )
+
+// safeGo runs fn in a goroutine with panic recovery.
+// On panic it logs the recovered value and a full stack trace; the
+// process keeps running. Goroutines are not restarted — a dead loop
+// is visible in the log for diagnosis rather than silently masked.
+func safeGo(name string, fn func()) {
+	go func() {
+		log.Printf("goroutine %s: started", name)
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("goroutine %s: PANIC: %v\n%s", name, r, debug.Stack())
+				return
+			}
+			log.Printf("goroutine %s: exited", name)
+		}()
+		fn()
+	}()
+}
 
 func runDaemon() {
 	fs := flag.NewFlagSet("daemon", flag.ExitOnError)
@@ -30,6 +49,12 @@ func runDaemon() {
 		log.SetOutput(logFile)
 		defer logFile.Close()
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("FATAL: daemon panic: %v\n%s", r, debug.Stack())
+		}
+	}()
 
 	cfg, err := LoadConfig(*configPath)
 	if err != nil {

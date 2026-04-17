@@ -89,6 +89,7 @@ func startApp(cfg *Config) {
 }
 
 func onReady(cfg *Config, syncer *Syncer) {
+	log.Println("tray: onReady starting")
 	systray.SetIcon(iconIdle)
 	systray.SetTitle("e2ee-sync")
 	systray.SetTooltip("e2ee-sync: Idle")
@@ -113,14 +114,14 @@ func onReady(cfg *Config, syncer *Syncer) {
 	// Handle OS signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
+	safeGo("tray.signal", func() {
 		<-sigCh
 		close(quitCh)
 		systray.Quit()
-	}()
+	})
 
 	// Tray menu event loop
-	go func() {
+	safeGo("tray.menu", func() {
 		paused := false
 		for {
 			select {
@@ -149,37 +150,68 @@ func onReady(cfg *Config, syncer *Syncer) {
 				return
 			}
 		}
-	}()
+	})
 
-	// Status update loop
-	go func() {
+	// Status update loop. Skips systray API calls when the rendered value
+	// has not changed — each SetIcon/SetTitle/SetTooltip can leak Windows
+	// GDI/User handles, so deduplication avoids long-running exhaustion
+	// (tray renders blank, menu stops responding).
+	safeGo("tray.status", func() {
+		// Initial render set in onReady above; track matching values.
+		lastState := StateIdle
+		lastTooltip := "e2ee-sync: Idle"
+		lastStatus := "Status: Starting..."
+		lastLastSync := "Last sync: never"
+		firstEvent := true
+
 		for st := range syncer.StatusCh {
+			log.Printf("tray.status: state=%d msg=%q lastSync=%v", st.State, st.Message, st.LastSync)
+
+			var icon []byte
+			var tooltip, statusTitle string
 			switch st.State {
 			case StateIdle:
-				systray.SetIcon(iconIdle)
-				tooltip := "e2ee-sync: " + st.Message
+				icon = iconIdle
+				tooltip = "e2ee-sync: " + st.Message
 				if strings.Contains(st.Message, "fallback") {
 					tooltip = "e2ee-sync: Hub unreachable, syncing via cloud"
 				}
-				systray.SetTooltip(tooltip)
-				mStatus.SetTitle("Status: " + st.Message)
+				statusTitle = "Status: " + st.Message
 			case StateSyncing:
-				systray.SetIcon(iconSyncing)
-				systray.SetTooltip("e2ee-sync: Syncing...")
-				mStatus.SetTitle("Status: Syncing...")
+				icon = iconSyncing
+				tooltip = "e2ee-sync: Syncing..."
+				statusTitle = "Status: Syncing..."
 			case StateError:
-				systray.SetIcon(iconError)
-				systray.SetTooltip("e2ee-sync: Error")
-				mStatus.SetTitle("Status: " + st.Message)
+				icon = iconError
+				tooltip = "e2ee-sync: Error"
+				statusTitle = "Status: " + st.Message
+			}
+
+			if firstEvent || st.State != lastState {
+				systray.SetIcon(icon)
+				lastState = st.State
+			}
+			if tooltip != lastTooltip {
+				systray.SetTooltip(tooltip)
+				lastTooltip = tooltip
+			}
+			if statusTitle != lastStatus {
+				mStatus.SetTitle(statusTitle)
+				lastStatus = statusTitle
 			}
 			if !st.LastSync.IsZero() {
-				mLastSync.SetTitle(fmt.Sprintf("Last sync: %s", st.LastSync.Format("15:04:05")))
+				t := fmt.Sprintf("Last sync: %s", st.LastSync.Format("15:04:05"))
+				if t != lastLastSync {
+					mLastSync.SetTitle(t)
+					lastLastSync = t
+				}
 			}
+			firstEvent = false
 		}
-	}()
+	})
 
 	// Run sync loop in background
-	go runSyncLoop(cfg, syncer, syncNowCh, quitCh)
+	safeGo("tray.syncloop", func() { runSyncLoop(cfg, syncer, syncNowCh, quitCh) })
 }
 
 func runSyncLoop(cfg *Config, syncer *Syncer, syncNowCh <-chan struct{}, quitCh <-chan struct{}) {

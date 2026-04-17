@@ -18,17 +18,17 @@ func startApp(cfg *Config) {
 	quitCh := make(chan struct{})
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
+	safeGo("darwin.signal", func() {
 		sig := <-sigCh
 		log.Printf("Received %s, shutting down...", sig)
 		close(quitCh)
-	}()
+	})
 
 	// Drain status channel (no tray to update)
-	go func() {
+	safeGo("darwin.status-drain", func() {
 		for range syncer.StatusCh {
 		}
-	}()
+	})
 
 	// Initial sync
 	log.Println("Running initial sync...")
