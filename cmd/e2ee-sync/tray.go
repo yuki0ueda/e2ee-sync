@@ -89,6 +89,7 @@ func startApp(cfg *Config) {
 }
 
 func onReady(cfg *Config, syncer *Syncer) {
+	log.Println("tray: onReady starting")
 	systray.SetIcon(iconIdle)
 	systray.SetTitle("e2ee-sync")
 	systray.SetTooltip("e2ee-sync: Idle")
@@ -113,14 +114,14 @@ func onReady(cfg *Config, syncer *Syncer) {
 	// Handle OS signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
+	safeGo("tray.signal", func() {
 		<-sigCh
 		close(quitCh)
 		systray.Quit()
-	}()
+	})
 
 	// Tray menu event loop
-	go func() {
+	safeGo("tray.menu", func() {
 		paused := false
 		for {
 			select {
@@ -149,11 +150,12 @@ func onReady(cfg *Config, syncer *Syncer) {
 				return
 			}
 		}
-	}()
+	})
 
 	// Status update loop
-	go func() {
+	safeGo("tray.status", func() {
 		for st := range syncer.StatusCh {
+			log.Printf("tray.status: state=%d msg=%q lastSync=%v", st.State, st.Message, st.LastSync)
 			switch st.State {
 			case StateIdle:
 				systray.SetIcon(iconIdle)
@@ -176,10 +178,10 @@ func onReady(cfg *Config, syncer *Syncer) {
 				mLastSync.SetTitle(fmt.Sprintf("Last sync: %s", st.LastSync.Format("15:04:05")))
 			}
 		}
-	}()
+	})
 
 	// Run sync loop in background
-	go runSyncLoop(cfg, syncer, syncNowCh, quitCh)
+	safeGo("tray.syncloop", func() { runSyncLoop(cfg, syncer, syncNowCh, quitCh) })
 }
 
 func runSyncLoop(cfg *Config, syncer *Syncer, syncNowCh <-chan struct{}, quitCh <-chan struct{}) {
